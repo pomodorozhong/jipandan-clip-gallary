@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jipandan Voice Box</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+  <div class="page">
+    <header class="toolbar">
+      <h1>jipandan voice box</h1>
+      <label class="pill">Columns <select id="columns-by"></select></label>
+      <label class="pill">Colour by <select id="colour-by"></select></label>
+      <label class="pill">Sort <select id="sort-by"></select></label>
+      <label class="pill search">Search <input id="search" type="search" placeholder="clip title"></label>
+    </header>
+
+    <div class="filters" id="filters" aria-label="Filters"></div>
+
+    <div class="legend-row">
+      <div class="legend" id="legend"></div>
+      <span class="total" id="total" aria-live="polite"></span>
+    </div>
+
+    <p class="message" id="message" hidden></p>
+
+    <main class="board-scroll">
+      <div class="board" id="board"></div>
+    </main>
+  </div>
+</body>
+</html>
