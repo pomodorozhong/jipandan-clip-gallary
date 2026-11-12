@@ -2,19 +2,18 @@
 
 ## In progress
 
-### docs/readme-goals
+### feat/chip-board-viewer
 
 - Task: first version of the clip gallery: README goals, then the chip board viewer (no issue yet; see P-02)
-- PR: none yet
+- PR: into `main`, opened under P-01; awaiting review
 - Code checkpoint: 44bacdc
-- State: README goals, phases and visual direction committed (46ce859, 9366502). The chip board viewer with sample data is committed (44bacdc). The branch name no longer fits, since it now holds the viewer too. Nothing is pushed. An untracked `.claude/launch.json` (local preview config) is intentionally not committed.
+- State: README goals, phases and visual direction committed (46ce859, 9366502). The chip board viewer with sample data is committed (44bacdc). The branch was renamed from `docs/readme-goals` and pushed for its PR. `feat/import-clips` is stacked on it. An untracked `.claude/launch.json` (local preview config) is intentionally not committed.
 - Verification: in the browser at http://localhost:8765 the board renders 44 sample clips; switching columns and colour between `use-case` and `source-game`, sorting by a dimension, filtering, and the URL-hash view all worked; a temporary test tone played and reset on end (then deleted); a missing file marks the chip broken; phone width (375px) stacks the controls and scrolls the board sideways. `node --check assets/app.js` and JSON parse of `data/clips.json` passed. Not tested: Safari or Firefox, real audio files.
-- Next action: get P-01 approved, rename the branch, push, and open the PR.
-- Pending: **P-01** rename this branch to `feat/chip-board-viewer`, push it, and open a PR into `main` (use the `open-pr` skill). Why: pushing and PRs need approval. Blocks: GitHub Pages hosting (P-04) and the team seeing the viewer.
+- Next action: get the PR reviewed and merged, then turn on GitHub Pages (P-04).
 
 ## Ranked work
 
-1. P-01 Push the viewer branch and open its PR
+1. Review and merge the viewer PR (`feat/chip-board-viewer`)
 2. P-02 Load the real clip list and audio, after deciding the audio format
 3. P-04 Turn on GitHub Pages from `main` once the PR merges
 4. P-03 Review phase: statuses and feedback (later phase)
