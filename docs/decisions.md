@@ -14,15 +14,15 @@ The first version only needs teammates to skim and listen to clips. A review pro
 
 ## Static site with no build step (2026-11-12)
 
-The viewer is plain HTML, CSS and JavaScript in `index.html` and `assets/`, served by GitHub Pages straight from the repo.
+The viewer is plain HTML, CSS and JavaScript in `src/`, served by GitHub Pages straight from the repo.
 
 Why: the team is three people and the page is small; skipping a build keeps hosting to "push to `main`" and lets anyone edit it.
 
-Gotcha: browsers block `fetch` of `data/clips.json` from a page opened with `file://`, so preview through a local HTTP server.
+Gotcha: browsers block `fetch` of `src/data/clips.json` from a page opened with `file://`, so preview through a local HTTP server.
 
 ## Data model: every extra field is a dimension (2026-11-12)
 
-Each clip needs `title` and `audio`; every other field is a dimension. A value can be a string or a list of strings, and a clip with a list shows in each matching column. The optional `dimensions` list in `data/clips.json` sets labels, menu order, and a fixed value order; without it, dimensions are inferred from the clips.
+Each clip needs `title` and `audio`; every other field is a dimension. A value can be a string or a list of strings, and a clip with a list shows in each matching column. The optional `dimensions` list in `src/data/clips.json` sets labels, menu order, and a fixed value order; without it, dimensions are inferred from the clips.
 
 Why: the team wants to group and sort by more than one dimension (source game and use case today, likely speaker, mood or status later) without code changes.
 

@@ -36,7 +36,7 @@ A board of compact chips: one column per value of a chosen dimension (use case b
 
 ## How it works
 
-The viewer is a plain static site with no build step: [index.html](index.html), [assets/app.js](assets/app.js), and [assets/style.css](assets/style.css). It reads every clip from [data/clips.json](data/clips.json) and shows each one as a small "▶ title" chip on a board.
+The viewer is a plain static site with no build step: [src/index.html](src/index.html), [src/assets/app.js](src/assets/app.js), and [src/assets/style.css](src/assets/style.css). It reads every clip from [src/data/clips.json](src/data/clips.json) and shows each one as a small "▶ title" chip on a board.
 
 - **Columns** splits the board into one column per value of the chosen dimension.
 - **Colour by** gives each value of a dimension its own colour on the chip's play button, with a key above the board.
@@ -47,7 +47,7 @@ The viewer is a plain static site with no build step: [index.html](index.html), 
 
 ## Data format
 
-`data/clips.json` holds a list of dimensions and a list of clips:
+`src/data/clips.json` holds a list of dimensions and a list of clips:
 
 ```json
 {
@@ -62,20 +62,20 @@ The viewer is a plain static site with no build step: [index.html](index.html), 
 }
 ```
 
-- `title` and `audio` are required on every clip. `audio` is a path relative to the site root, or a full URL.
+- `title` and `audio` are required on every clip. `audio` is a path relative to `src/` (the site root), or a full URL.
 - Every other field is a dimension. Its value is a string, or a list of strings when a clip belongs to more than one group; the clip then shows up in each of those columns.
 - `dimensions` sets the labels and the menu order. `order` is optional and fixes the order of values (for example the column order); values not listed follow in A–Z order. If `dimensions` is left out, the viewer uses every other field on the clips and names it from its key.
 - A clip with no value for a dimension goes in a "(none)" group.
 - To add a new dimension, such as `speaker` or `mood`, add the field to the clips and an entry to `dimensions`. No code change is needed.
 
-The clips in the file now are sample data with no audio files behind them. Replace them with the real list and put the audio under `clips/`.
+The clips in the file now are sample data with no audio files behind them. Replace them with the real list and put the audio under `src/clips/`.
 
 ## Running it locally
 
-Browsers will not load the data file from a page opened straight from disk, so serve the folder over HTTP:
+Browsers will not load the data file from a page opened straight from disk, so serve the `src` folder over HTTP:
 
 ```bash
-python3 -m http.server 8765
+python3 -m http.server 8765 -d src
 ```
 
 Then open http://localhost:8765.
