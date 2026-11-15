@@ -33,3 +33,14 @@ Each clip needs `title` and `audio`; every other field is a dimension. A value c
 Why: the team wants to group and sort by more than one dimension (source game and use case today, likely speaker, mood or status later) without code changes.
 
 Colour assignment is built from all clips, not the filtered set, so a value keeps its colour while filtering. The palette has 10 colours and repeats after that.
+
+## Clips come in through a local triage page (2026-11-16)
+
+New clips are imported, tagged and published from a triage page that runs only on the project lead's computer ([triage/](../triage/), served by [scripts/triage.py](../scripts/triage.py), opened with `Triage.command`). It grew out of `clip_picker.py`, an untracked local page in the jipandan-clip repo that listed exported MP3s, played them, and copied a selection to the Desktop. A first version was a command-line import script; it was replaced before merging because the lead wanted to pick, listen and tag in a GUI, without a terminal.
+
+Why: a static GitHub Pages site cannot read a folder or write files, so importing needs a local server. The page reuses the viewer's board (`src/assets/app.js` exposes a few hooks that only the triage page sets), so chips, columns and playback look and work the same.
+
+- Games are set per folder and use cases per clip, after import, because exports arrive per recording session of one game while use cases differ clip by clip.
+- Untriaged clips wait in a git-ignored `inbox/` and are published only once they have both a game and a use case, so the team only sees triaged clips and unfinished audio never reaches GitHub.
+- Publish commits only `src/data/clips.json` and `src/clips/` and pushes straight to `main`, since one person publishes and the team only listens. It refuses if the list changed on GitHub since the page loaded.
+- Titles are parsed from jipandan-clip's export names (`<recording>_<4+ digit clip id>_<title>`), matching the last clip id so recording names that contain digits still parse.

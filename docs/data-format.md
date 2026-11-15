@@ -21,4 +21,4 @@
 - A clip with no value for a dimension goes in a "(none)" group.
 - To add a new dimension, such as `speaker` or `mood`, add the field to the clips and an entry to `dimensions`. No code change is needed.
 
-The clips in the file now are sample data with no audio files behind them. Replace them with the real list and put the audio under `src/clips/`.
+The clips in the file now are sample data with no audio files behind them. Replace them with the real list and put the audio under `src/clips/`, most easily with the [triage page](triage.md).

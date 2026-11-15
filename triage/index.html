@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Triage · Jipandan Voice Box</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- The viewer's own styles and board script, plus the triage additions. Served by scripts/triage.py. -->
+  <link rel="stylesheet" href="/assets/style.css">
+  <link rel="stylesheet" href="/triage/triage.css">
+  <script src="/triage/triage.js" defer></script>
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <div class="page">
+    <p class="notice" id="notice" hidden></p>
+
+    <header class="toolbar">
+      <h1>jipandan voice box</h1>
+      <span class="badge">Triage</span>
+      <span class="spacer"></span>
+      <label class="pill">Columns <select id="columns-by"></select></label>
+      <label class="pill">Colour by <select id="colour-by"></select></label>
+      <label class="pill">Sort <select id="sort-by"></select></label>
+      <label class="pill search">Search <input id="search" type="search" placeholder="clip title"></label>
+      <button class="btn quiet" id="remove-missing" hidden></button>
+      <button class="btn" id="open-import">Import clips</button>
+      <button class="btn primary" id="publish" disabled>Nothing to publish</button>
+    </header>
+
+    <section id="folders-section" hidden>
+      <h3 class="section-title">Folders <small>Each imported folder gets one source game.</small></h3>
+      <div class="folders" id="folders"></div>
+    </section>
+
+    <div class="tagbar" id="tagbar"></div>
+
+    <div class="filters" id="filters" aria-label="Filters"></div>
+
+    <div class="legend-row">
+      <div class="legend" id="legend"></div>
+      <span class="total" id="total" aria-live="polite"></span>
+    </div>
+
+    <p class="message" id="message" hidden></p>
+
+    <main class="board-scroll">
+      <div class="board" id="board"></div>
+    </main>
+  </div>
+
+  <dialog class="sheet" id="import">
+    <div class="sheet-inner">
+      <h2>Import clips</h2>
+      <div class="drop" id="drop">
+        <strong>Drop an export folder here</strong>
+        <span>Every audio file inside it is listed, including subfolders.</span>
+        <label class="btn primary">Choose folder…<input id="dir" type="file" webkitdirectory multiple hidden></label>
+      </div>
+      <div class="picked" id="picked" hidden>
+        <strong id="picked-name"></strong>
+        <label class="pill">Copy into clips/ <input id="dest" type="text" spellcheck="false"></label>
+        <button class="btn quiet" id="pick-again">Choose another folder</button>
+      </div>
+      <ul class="found" id="found" hidden></ul>
+      <div class="sheet-actions">
+        <span class="spacer" id="found-summary"></span>
+        <button class="btn quiet" id="select-new" hidden>Select all new</button>
+        <button class="btn quiet" id="select-none" hidden>Clear</button>
+        <button class="btn quiet" id="close-import">Cancel</button>
+        <button class="btn primary" id="do-import" disabled>Import selected</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="sheet small" id="confirm-publish">
+    <div class="sheet-inner">
+      <h2>Publish to GitHub Pages?</h2>
+      <ul class="plain" id="publish-list"></ul>
+      <p class="hint">This commits <code>src/data/clips.json</code> and <code>src/clips/</code> on main and pushes them. Untagged clips stay on this computer.</p>
+      <div class="sheet-actions">
+        <span class="spacer"></span>
+        <button class="btn quiet" id="cancel-publish">Cancel</button>
+        <button class="btn primary" id="do-publish">Publish</button>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>
