@@ -72,13 +72,17 @@ The clips in the file now are sample data with no audio files behind them. Repla
 
 ## Running it locally
 
-Browsers will not load the data file from a page opened straight from disk, so serve the `src` folder over HTTP:
+Browsers will not load the data file from a page opened straight from disk, so serve the `src` folder over HTTP. With Node.js installed, install the tools once, then start the server:
 
 ```bash
-python3 -m http.server 8765 -d src
+npm install
 ```
 
-Then open http://localhost:8765.
+```bash
+npm run serve
+```
+
+Then open http://localhost:8765. `npm run check` catches syntax errors in the script and in the data file.
 
 ## Hosting on GitHub Pages
 

@@ -2,7 +2,7 @@
 
 Jipandan clip gallery: a static GitHub Pages viewer for a three-person indie game team to skim short voice clips on a board of "▶ title" chips. Any field in `src/data/clips.json` other than `title` and `audio` is a dimension that can set the columns, colour, sort, or a filter. See [README.md](README.md) for goals and the data format, and [docs/](docs/README.md) for decisions.
 
-Checks: there is no build or test suite yet. Serve the folder with `python3 -m http.server 8765 -d src` and open http://localhost:8765; `node --check src/assets/app.js` catches syntax errors.
+Checks: there is no build or test suite yet. Run `npm ci` once, then `npm run check` (syntax check of the script and a parse of the data file). `npm run serve` serves `src/` at http://localhost:8765.
 
 <!-- handoff:start (from the handoff skill; edit the skill's template, not this copy) -->
 ## Handoff
