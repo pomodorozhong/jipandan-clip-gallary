@@ -5,18 +5,22 @@
 ### feat/chip-board-viewer
 
 - Task: first version of the clip gallery: README goals, then the chip board viewer (no issue yet; see P-02)
-- PR: into `main`, opened under P-01; awaiting review
-- Code checkpoint: 44bacdc
-- State: README goals, phases and visual direction committed (46ce859, 9366502). The chip board viewer with sample data is committed (44bacdc). The branch was renamed from `docs/readme-goals` and pushed for its PR. `feat/import-clips` is stacked on it. An untracked `.claude/launch.json` (local preview config) is intentionally not committed.
-- Verification: in the browser at http://localhost:8765 the board renders 44 sample clips; switching columns and colour between `use-case` and `source-game`, sorting by a dimension, filtering, and the URL-hash view all worked; a temporary test tone played and reset on end (then deleted); a missing file marks the chip broken; phone width (375px) stacks the controls and scrolls the board sideways. `node --check assets/app.js` and JSON parse of `data/clips.json` passed. Not tested: Safari or Firefox, real audio files.
-- Next action: get the PR reviewed and merged, then turn on GitHub Pages (P-04).
+- PR: #1 into `main`, opened under P-01; awaiting review
+- Code checkpoint: bb78ccb
+- State: README goals, phases and visual direction committed (46ce859, 9366502). The chip board viewer with sample data is committed (44bacdc). To follow the web project defaults, the site moved into `src/` (37ea47e), local serving and checks moved to npm scripts with the `serve` package (b5d6a1b), and a workflow publishes `src/` to GitHub Pages and runs `npm run check` on PRs (bb78ccb). `feat/import-clips` is stacked on this branch and does not have these commits yet: its import script and docs still name `data/clips.json` and `clips/`, which are now under `src/`. An untracked `.claude/launch.json` (local preview config, now `npm run serve`) is intentionally not committed.
+- Verification: after the move, `npm run serve` served the board with 44 sample clips at http://localhost:8765, CSS and data loaded, a missing audio file returned 404 (so chips can mark it broken), and the console had no errors. `npm run check` passed on each of the three new commits in a clean worktree. Earlier, at 44bacdc, switching columns, colour, sort, filters, the URL-hash view, playing a test tone and phone width (375px) all worked; the move changed no code, so these were not re-run. Not tested: the Pages workflow on GitHub (it runs once pushed), Safari or Firefox, real audio files.
+- Pending: P-05 (update the PR body).
+- Next action: confirm the workflow's check job passes on the PR, then get the PR reviewed and merged, then turn on GitHub Pages (P-04).
+
+- **P-05** Update the body of PR #1 to describe the `src/` layout, the npm scripts and the Pages workflow (draft shown in the session). Why: editing the PR needs approval. Blocks: reviewers reading accurate instructions.
 
 ## Ranked work
 
 1. Review and merge the viewer PR (`feat/chip-board-viewer`)
 2. P-02 Load the real clip list and audio, after deciding the audio format
-3. P-04 Turn on GitHub Pages from `main` once the PR merges
-4. P-03 Review phase: statuses and feedback (later phase)
+3. P-04 Turn on GitHub Pages (source: GitHub Actions) once the PR merges
+4. Bring `feat/import-clips` up to date with the `src/` move (merge the base branch, update its script and docs paths)
+5. P-03 Review phase: statuses and feedback (later phase)
 
 ## Pending
 
@@ -24,4 +28,4 @@
   Why: filing issues needs approval. Blocks: real use of the viewer.
 - **P-03** File issue: "Review phase: clip statuses and feedback". Labels: `enhancement`. Body: Second phase from the README: let the team move clips through statuses (raw, candidate, approved, used in game, rejected) and leave feedback. Open question (needs decision): where review data is written, since GitHub Pages is static (options: edit `data/clips.json` through PRs, GitHub issues per clip, or an external store). A `status` field can already be added as a dimension today with no code change. Done when: a teammate can mark a clip's status and others see it.
   Why: filing issues needs approval. Blocks: nothing now (later phase).
-- **P-04** Turn on GitHub Pages: Settings → Pages → Deploy from a branch → `main`, `/ (root)`. Optionally also turn on "Automatically delete head branches" (currently off). Why: repository settings need approval. Blocks: the team opening the viewer at its github.io address. Waits on: P-01 PR merging.
+- **P-04** Turn on GitHub Pages: Settings → Pages → Source: "GitHub Actions" (the workflow in `.github/workflows/pages.yml` publishes `src/`). Optionally also turn on "Automatically delete head branches" (currently off). Why: repository settings need approval. Blocks: the team opening the viewer at its github.io address. Waits on: PR #1 merging.
