@@ -14,9 +14,15 @@ The first version only needs teammates to skim and listen to clips. A review pro
 
 ## Static site with no build step (2026-11-12)
 
-The viewer is plain HTML, CSS and JavaScript in `src/`, served by GitHub Pages straight from the repo.
+The viewer is plain HTML, CSS and JavaScript in `src/`. A GitHub Actions workflow publishes that folder to GitHub Pages as it is, with no build.
 
 Why: the team is three people and the page is small; skipping a build keeps hosting to "push to `main`" and lets anyone edit it.
+
+## Site in `src/`, npm for local tools (2026-11-15)
+
+The site moved from the repository root into `src/`, so the root holds only project-wide files. GitHub Pages can only publish the root or `/docs` from a branch, so a workflow (`.github/workflows/pages.yml`) publishes `src/` instead; the Pages source is "GitHub Actions". Local serving and checks run through npm scripts (`npm run serve`, `npm run check`) rather than Python's HTTP server.
+
+Why: this follows the team's web project defaults (a tidy root, npm for tooling) without adding a build step. Vite was considered and left out for now: it would add a build and more root files for a page this small; it can be added later by pointing it at `src/`.
 
 Gotcha: browsers block `fetch` of `src/data/clips.json` from a page opened with `file://`, so preview through a local HTTP server.
 

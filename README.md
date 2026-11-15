@@ -86,7 +86,7 @@ Then open http://localhost:8765. `npm run check` catches syntax errors in the sc
 
 ## Hosting on GitHub Pages
 
-In the repository's **Settings → Pages**, set **Source** to "Deploy from a branch", pick `main` and the `/ (root)` folder, and save. The viewer is then published at `https://<owner>.github.io/jipandan-clip-gallary/` and updates on every push to `main`.
+The workflow in [.github/workflows/pages.yml](.github/workflows/pages.yml) publishes the `src` folder as it is, with no build. In the repository's **Settings → Pages**, set **Source** to "GitHub Actions". The viewer is then published at `https://<owner>.github.io/jipandan-clip-gallary/` and updates on every push to `main`. The same workflow runs `npm run check` on every pull request.
 
 ## Status
 
