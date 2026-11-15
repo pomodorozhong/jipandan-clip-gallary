@@ -1,0 +1,12 @@
+{
+  "name": "jipandan-clip-gallary",
+  "private": true,
+  "description": "Static viewer for skimming the team's voice clips on a board of chips.",
+  "scripts": {
+    "serve": "serve src --listen 8765",
+    "check": "node --check src/assets/app.js && node -e \"JSON.parse(require('fs').readFileSync('src/data/clips.json', 'utf8'))\""
+  },
+  "devDependencies": {
+    "serve": "^14.2.8"
+  }
+}

@@ -1,0 +1,288 @@
+{
+  "dimensions": [
+    {
+      "key": "use-case",
+      "label": "Use case",
+      "order": [
+        "Hurt",
+        "Victory",
+        "Idle chatter",
+        "Tutorial",
+        "UI feedback"
+      ]
+    },
+    {
+      "key": "source-game",
+      "label": "Source game"
+    }
+  ],
+  "clips": [
+    {
+      "title": "grunt",
+      "audio": "clips/sample-game-a/grunt.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "ouch",
+      "audio": "clips/sample-game-a/ouch.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "oof",
+      "audio": "clips/sample-game-a/oof.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "hiss",
+      "audio": "clips/sample-game-a/hiss.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "ow ow",
+      "audio": "clips/sample-game-a/ow-ow.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "gasp",
+      "audio": "clips/sample-game-a/gasp.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "hmph",
+      "audio": "clips/sample-game-a/hmph.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "yay!",
+      "audio": "clips/sample-game-a/yay.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Victory"
+    },
+    {
+      "title": "woohoo",
+      "audio": "clips/sample-game-a/woohoo.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Victory"
+    },
+    {
+      "title": "heh, easy",
+      "audio": "clips/sample-game-a/heh-easy.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Victory"
+    },
+    {
+      "title": "yes!",
+      "audio": "clips/sample-game-a/yes.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Victory"
+    },
+    {
+      "title": "hum tune",
+      "audio": "clips/sample-game-a/hum-tune.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Idle chatter"
+    },
+    {
+      "title": "whistle",
+      "audio": "clips/sample-game-a/whistle.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Idle chatter"
+    },
+    {
+      "title": "so bored",
+      "audio": "clips/sample-game-a/so-bored.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Idle chatter"
+    },
+    {
+      "title": "yawn",
+      "audio": "clips/sample-game-a/yawn.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Idle chatter"
+    },
+    {
+      "title": "press to jump",
+      "audio": "clips/sample-game-a/press-to-jump.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Tutorial"
+    },
+    {
+      "title": "try again",
+      "audio": "clips/sample-game-a/try-again.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Tutorial"
+    },
+    {
+      "title": "hold to run",
+      "audio": "clips/sample-game-a/hold-to-run.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "Tutorial"
+    },
+    {
+      "title": "ok",
+      "audio": "clips/sample-game-a/ok.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "UI feedback"
+    },
+    {
+      "title": "nope",
+      "audio": "clips/sample-game-a/nope.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "UI feedback"
+    },
+    {
+      "title": "back",
+      "audio": "clips/sample-game-a/back.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "UI feedback"
+    },
+    {
+      "title": "got it",
+      "audio": "clips/sample-game-a/got-it.ogg",
+      "source-game": "Sample Game A",
+      "use-case": "UI feedback"
+    },
+    {
+      "title": "ugh low",
+      "audio": "clips/sample-game-b/ugh-low.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "groan long",
+      "audio": "clips/sample-game-b/groan-long.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "crunch hit",
+      "audio": "clips/sample-game-b/crunch-hit.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "yelp",
+      "audio": "clips/sample-game-b/yelp.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "eek",
+      "audio": "clips/sample-game-b/eek.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Hurt"
+    },
+    {
+      "title": "roar",
+      "audio": "clips/sample-game-b/roar.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Victory"
+    },
+    {
+      "title": "stomp roar",
+      "audio": "clips/sample-game-b/stomp-roar.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Victory"
+    },
+    {
+      "title": "we did it",
+      "audio": "clips/sample-game-b/we-did-it.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Victory"
+    },
+    {
+      "title": "cheer",
+      "audio": "clips/sample-game-b/cheer.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Victory"
+    },
+    {
+      "title": "hmm",
+      "audio": "clips/sample-game-b/hmm.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Idle chatter"
+    },
+    {
+      "title": "welcome in",
+      "audio": "clips/sample-game-b/welcome-in.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Idle chatter"
+    },
+    {
+      "title": "take a look",
+      "audio": "clips/sample-game-b/take-a-look.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Idle chatter"
+    },
+    {
+      "title": "fine wares",
+      "audio": "clips/sample-game-b/fine-wares.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Idle chatter"
+    },
+    {
+      "title": "come back!",
+      "audio": "clips/sample-game-b/come-back.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Idle chatter"
+    },
+    {
+      "title": "grumble",
+      "audio": "clips/sample-game-b/grumble.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Idle chatter"
+    },
+    {
+      "title": "over here",
+      "audio": "clips/sample-game-b/over-here.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Tutorial"
+    },
+    {
+      "title": "follow me",
+      "audio": "clips/sample-game-b/follow-me.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Tutorial"
+    },
+    {
+      "title": "watch out",
+      "audio": "clips/sample-game-b/watch-out.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "Tutorial"
+    },
+    {
+      "title": "ding",
+      "audio": "clips/sample-game-b/ding.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "UI feedback"
+    },
+    {
+      "title": "select",
+      "audio": "clips/sample-game-b/select.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "UI feedback"
+    },
+    {
+      "title": "huh",
+      "audio": "clips/sample-game-b/huh.ogg",
+      "source-game": "Sample Game B",
+      "use-case": [
+        "UI feedback",
+        "Idle chatter"
+      ]
+    },
+    {
+      "title": "saved",
+      "audio": "clips/sample-game-b/saved.ogg",
+      "source-game": "Sample Game B",
+      "use-case": "UI feedback"
+    }
+  ]
+}
