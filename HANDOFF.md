@@ -8,11 +8,8 @@
 - PR: #1 into `main`, opened under P-01; awaiting review
 - Code checkpoint: bb78ccb
 - State: README goals, phases and visual direction committed (46ce859, 9366502). The chip board viewer with sample data is committed (44bacdc). To follow the web project defaults, the site moved into `src/` (37ea47e), local serving and checks moved to npm scripts with the `serve` package (b5d6a1b), and a workflow publishes `src/` to GitHub Pages and runs `npm run check` on PRs (bb78ccb). `feat/import-clips` is stacked on this branch and does not have these commits yet: its import script and docs still name `data/clips.json` and `clips/`, which are now under `src/`. An untracked `.claude/launch.json` (local preview config, now `npm run serve`) is intentionally not committed.
-- Verification: after the move, `npm run serve` served the board with 44 sample clips at http://localhost:8765, CSS and data loaded, a missing audio file returned 404 (so chips can mark it broken), and the console had no errors. `npm run check` passed on each of the three new commits in a clean worktree. Earlier, at 44bacdc, switching columns, colour, sort, filters, the URL-hash view, playing a test tone and phone width (375px) all worked; the move changed no code, so these were not re-run. Not tested: the Pages workflow on GitHub (it runs once pushed), Safari or Firefox, real audio files.
-- Pending: P-05 (update the PR body).
-- Next action: confirm the workflow's check job passes on the PR, then get the PR reviewed and merged, then turn on GitHub Pages (P-04).
-
-- **P-05** Update the body of PR #1 to describe the `src/` layout, the npm scripts and the Pages workflow (draft shown in the session). Why: editing the PR needs approval. Blocks: reviewers reading accurate instructions.
+- Verification: after the move, `npm run serve` served the board with 44 sample clips at http://localhost:8765, CSS and data loaded, a missing audio file returned 404 (so chips can mark it broken), and the console had no errors. `npm run check` passed on each of the three new commits in a clean worktree. Earlier, at 44bacdc, switching columns, colour, sort, filters, the URL-hash view, playing a test tone and phone width (375px) all worked; the move changed no code, so these were not re-run. On PR #1 the workflow's `check` job passed and `deploy` was skipped as intended; the deploy job has not run yet (it needs `main` and the Pages setting). Not tested: Safari or Firefox, real audio files.
+- Next action: get the PR reviewed and merged, then turn on GitHub Pages (P-04).
 
 ## Ranked work
 
