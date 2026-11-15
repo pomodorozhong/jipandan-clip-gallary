@@ -1,8 +1,8 @@
 # Agent notes
 
-Jipandan clip gallery: a static GitHub Pages viewer for a three-person indie game team to skim short voice clips on a board of "▶ title" chips. Any field in `src/data/clips.json` other than `title` and `audio` is a dimension that can set the columns, colour, sort, or a filter. See [README.md](README.md) for goals and the data format, and [docs/](docs/README.md) for decisions.
+Static viewer for the team's voice clips. Goals and data format: [README.md](README.md). Decisions: [docs/](docs/README.md).
 
-Checks: there is no build or test suite yet. Run `npm ci` once, then `npm run check` (syntax check of the script and a parse of the data file). `npm run serve` serves `src/` at http://localhost:8765.
+Checks: `npm ci`, then `npm run check` (no test suite yet). Preview with `npm run serve`.
 
 <!-- handoff:start (from the handoff skill; edit the skill's template, not this copy) -->
 ## Handoff
