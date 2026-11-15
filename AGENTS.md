@@ -1,6 +1,6 @@
 # Agent notes
 
-Static viewer for the team's voice clips. Goals and data format: [README.md](README.md). Decisions: [docs/](docs/README.md).
+Static viewer for the team's voice clips. Goals, data format and decisions: [docs/](docs/README.md).
 
 Checks: `npm ci`, then `npm run check` (no test suite yet). Preview with `npm run serve`.
 
