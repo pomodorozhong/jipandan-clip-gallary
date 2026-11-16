@@ -49,7 +49,7 @@ Your work on unpublished clips is saved in `inbox/` as you go, so you can close 
 
 ## Publishing
 
-**Publish** sends every clip that has both a game and a use case (and is not dropped) to GitHub: it moves their audio into `src/clips/`, adds them to `src/data/clips.json`, commits only those two paths on the branch you have checked out, and pushes that branch. Clips still missing a game or a use case stay in `inbox/`, on your computer only.
+**Publish** sends every clip that has both a game and a use case (and is not dropped) to GitHub: it moves their audio into `src/clips/`, adds them to `src/data/clips.json`, commits the clip list and only the audio files it moved in or deleted on the branch you have checked out, and pushes that branch. Other changes under `src/clips/` are never swept into that commit. Clips still missing a game or a use case stay in `inbox/`, on your computer only.
 
 - **On `main`**, the site updates about a minute later.
 - **On another branch**, the clips go live once that branch is merged into `main`. **Open a pull request**, under the Publish button, opens one on GitHub so someone can review the clips first.
@@ -59,4 +59,5 @@ Your work on unpublished clips is saved in `inbox/` as you go, so you can close 
 - If `src/data/clips.json` changed on GitHub since the page loaded, Publish stops and asks you to reload, so nobody's changes are overwritten.
 - **Remove N clips with missing audio** appears when the list has clips without an audio file, such as the sample data. They are removed on the next Publish.
 - **Preview gallery**, next to the branch name (and in the message after publishing), opens the team's page as published from this checkout, at `http://127.0.0.1:8770/gallery/`. It shows `src/` only, so clips still in the inbox are not on it.
+- If the commit itself fails (for example, a git hook refuses it, or git has no name and email set), Publish undoes everything it did: the clips go back to the inbox and the published list is as it was.
 - If the push fails (for example, no network), the commit is kept; push the branch once it works again.
