@@ -75,9 +75,9 @@
 
   <dialog class="sheet small" id="confirm-publish">
     <div class="sheet-inner">
-      <h2>Publish to GitHub Pages?</h2>
+      <h2 id="publish-title">Publish to GitHub Pages?</h2>
       <ul class="plain" id="publish-list"></ul>
-      <p class="hint">This commits <code>src/data/clips.json</code> and <code>src/clips/</code> on main and pushes them. Untagged clips stay on this computer.</p>
+      <p class="hint">This commits <code>src/data/clips.json</code> and <code>src/clips/</code> on <code id="publish-target">main</code> and pushes it.<span id="publish-after"></span> Untagged clips stay on this computer.</p>
       <div class="sheet-actions">
         <span class="spacer"></span>
         <button class="btn quiet" id="cancel-publish">Cancel</button>

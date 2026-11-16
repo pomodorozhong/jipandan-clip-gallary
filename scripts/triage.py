@@ -8,8 +8,9 @@ the terminal window (or press Ctrl+C) to stop it.
 
 Imported clips wait in inbox/ (ignored by git, so they stay on this computer)
 until they have a source game and a use case. Publish then moves them into
-src/clips/ and src/data/clips.json, commits those two paths, and pushes to
-main, which updates the GitHub Pages site.
+src/clips/ and src/data/clips.json, commits those two paths on the checked-out
+branch, and pushes it. On main that updates the GitHub Pages site; on any other
+branch the clips go live once that branch is merged into main.
 
 Needs only Python 3 and git; no packages to install.
 """
@@ -27,7 +28,7 @@ import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 REPO = Path(__file__).resolve().parent.parent
 SITE = REPO / "src"                      # the published site
@@ -35,7 +36,7 @@ PAGE = REPO / "triage"                   # the triage page's own files
 INBOX = REPO / "inbox"                   # imported clips not published yet (git-ignored)
 DATA = SITE / "data" / "clips.json"
 INBOX_DATA = INBOX / "clips.json"
-BRANCH = "main"
+LIVE_BRANCH = "main"                     # the branch GitHub Pages publishes
 AUDIO_SUFFIXES = {".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".wav", ".flac", ".webm"}
 MAX_UPLOAD = 200 * 1024 * 1024
 
@@ -88,6 +89,16 @@ def git(*args: str, check: bool = True) -> str:
     return result.stdout.strip()
 
 
+def compare_url(branch: str) -> str:
+    """GitHub link for opening a pull request from branch into main, or "" if origin is not on GitHub."""
+    url = git("remote", "get-url", "origin", check=False)
+    for prefix in ("https://github.com/", "git@github.com:", "ssh://git@github.com/"):
+        if url.startswith(prefix):
+            repo = url[len(prefix):].removesuffix("/").removesuffix(".git")
+            return f"https://github.com/{repo}/compare/{LIVE_BRANCH}...{quote(branch, safe='/')}?expand=1"
+    return ""
+
+
 def clean_clip(c) -> dict:
     if not isinstance(c, dict) or not isinstance(c.get("title"), str) or not c["title"].strip():
         raise Refused("every clip needs a title")
@@ -107,22 +118,25 @@ def state() -> dict:
         "missing": missing,
         "version": digest(DATA),
         "branch": branch,
-        "canPublish": branch == BRANCH,
-        "publishBranch": BRANCH,
+        "canPublish": bool(branch),
+        "liveBranch": LIVE_BRANCH,
+        "compareUrl": compare_url(branch) if branch and branch != LIVE_BRANCH else "",
     }
 
 
 def publish(body: dict) -> dict:
-    """Write the edited published list, move newly published audio out of the inbox, commit and push."""
-    if git("branch", "--show-current") != BRANCH:
-        raise Refused(f"Publishing needs the {BRANCH} branch checked out; this checkout is on another branch.", HTTPStatus.CONFLICT)
+    """Write the edited published list, move newly published audio out of the inbox, commit and push the current branch."""
+    branch = git("branch", "--show-current")
+    if not branch:
+        raise Refused("Publishing needs a branch checked out; this checkout is not on a branch.", HTTPStatus.CONFLICT)
     if body.get("version") != digest(DATA):
         raise Refused("src/data/clips.json changed since the page loaded. Reload the page and try again.", HTTPStatus.CONFLICT)
     if git("status", "--porcelain", "--", "src/data/clips.json"):
         raise Refused("src/data/clips.json has uncommitted changes. Commit or discard them first.", HTTPStatus.CONFLICT)
 
-    # Bring main up to date first, so the push is a fast-forward.
-    git("pull", "--ff-only", "--quiet")
+    # Bring the branch up to date first, so the push is a fast-forward. A branch never pushed has nothing to pull.
+    if git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}", check=False):
+        git("pull", "--ff-only", "--quiet")
     if body.get("version") != digest(DATA):
         raise Refused("GitHub had newer clips. Reload the page to see them, then publish again.", HTTPStatus.CONFLICT)
 
@@ -162,12 +176,15 @@ def publish(body: dict) -> dict:
     summary = f"{added} new clip{'s' if added != 1 else ''}" if added else "clip tags"
     git("commit", "--quiet", "-m", f"chore: publish {summary}", "--", "src/data/clips.json", "src/clips")
     commit = git("rev-parse", "--short", "HEAD")
-    push = subprocess.run(["git", "push", "--quiet", "origin", BRANCH], cwd=REPO, capture_output=True, text=True)
+    push = subprocess.run(["git", "push", "--quiet", "--set-upstream", "origin", branch], cwd=REPO, capture_output=True, text=True)
     if push.returncode != 0:
         return {"committed": True, "pushed": False, "commit": commit,
-                "message": f"Committed {commit}, but the push failed: {push.stderr.strip()} Fix it, then push {BRANCH}."}
-    return {"committed": True, "pushed": True, "commit": commit,
-            "message": f"Published {summary} ({commit}). The team's page updates in about a minute."}
+                "message": f"Committed {commit}, but the push failed: {push.stderr.strip()} Fix it, then push {branch}."}
+    if branch == LIVE_BRANCH:
+        message = f"Published {summary} ({commit}). The team's page updates in about a minute."
+    else:
+        message = f"Pushed {summary} to {branch} ({commit}). They go live once {branch} is merged into {LIVE_BRANCH}."
+    return {"committed": True, "pushed": True, "commit": commit, "message": message}
 
 
 def make_handler(port: int):

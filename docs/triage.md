@@ -30,9 +30,13 @@ Your work on unpublished clips is saved in `inbox/` as you go, so you can close 
 
 ## Publishing
 
-**Publish** sends every clip that has both a game and a use case to GitHub Pages: it moves their audio into `src/clips/`, adds them to `src/data/clips.json`, commits only those two paths on `main`, and pushes. The site updates about a minute later. Clips still missing a game or a use case stay in `inbox/`, on your computer only.
+**Publish** sends every clip that has both a game and a use case to GitHub: it moves their audio into `src/clips/`, adds them to `src/data/clips.json`, commits only those two paths on the branch you have checked out, and pushes that branch. Clips still missing a game or a use case stay in `inbox/`, on your computer only.
 
-- Publishing needs the `main` branch checked out. On another branch you can still import and tag.
+- **On `main`**, the site updates about a minute later.
+- **On another branch**, the clips go live once that branch is merged into `main`. The notice at the top of the page links to GitHub to open a pull request, so someone can review the clips first.
+
+- Publishing needs a branch checked out. In a detached checkout you can still import and tag.
+- Keep clip branches short-lived: two open branches that both add clips will conflict in `src/data/clips.json`.
 - If `src/data/clips.json` changed on GitHub since the page loaded, Publish stops and asks you to reload, so nobody's changes are overwritten.
 - **Remove N clips with missing audio** appears when the list has clips without an audio file, such as the sample data. They are removed on the next Publish.
-- If the push fails (for example, no network), the commit is kept; push `main` once it works again.
+- If the push fails (for example, no network), the commit is kept; push the branch once it works again.

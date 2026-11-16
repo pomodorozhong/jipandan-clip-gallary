@@ -285,7 +285,7 @@
     const btn = $('publish');
     btn.disabled = !n || !server.canPublish;
     btn.textContent = n ? `Publish ${n} change${n > 1 ? 's' : ''}` : 'Nothing to publish';
-    btn.title = server.canPublish ? '' : `Publishing needs the ${server.publishBranch} branch checked out.`;
+    btn.title = server.canPublish ? '' : 'Publishing needs a branch checked out.';
 
     const missing = live().filter((c) => server.missing.includes(c.audio));
     const rm = $('remove-missing');
@@ -294,13 +294,24 @@
 
     const notice = $('notice');
     const waiting = inbox.filter((c) => !ready(c)).length;
-    const lines = [];
-    if (!server.canPublish) lines.push(`This checkout is on “${server.branch || 'no branch'}”. You can import and tag, but Publish works only on ${server.publishBranch}.`);
-    if (waiting) lines.push(waiting > 1
+    const parts = [];
+    if (!server.canPublish) parts.push('This checkout is not on a branch. You can import and tag, but Publish needs a branch checked out.');
+    else if (onBranch()) {
+      parts.push(`Publish commits to “${server.branch}” and pushes it. The clips go live once it is merged into ${server.liveBranch}.`);
+      if (server.compareUrl) {
+        const link = document.createElement('a');
+        link.href = server.compareUrl;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'Open a pull request';
+        parts.push(link, '.');
+      }
+    }
+    if (waiting) parts.push(waiting > 1
       ? `${waiting} imported clips still need a game or a use case; they stay on this computer until then.`
       : '1 imported clip still needs a game or a use case; it stays on this computer until then.');
-    notice.textContent = lines.join(' ');
-    notice.hidden = !lines.length;
+    notice.replaceChildren(...parts.flatMap((part, i) => (i && part !== '.' ? [' ', part] : [part])));
+    notice.hidden = !parts.length;
   }
 
   // ---------- tagging ----------
@@ -530,6 +541,9 @@
 
   // ---------- publish ----------
 
+  // True when Publish goes to a work branch (reviewed in a PR) rather than straight to the live branch.
+  const onBranch = () => server.canPublish && server.branch !== server.liveBranch;
+
   function wirePublish() {
     $('remove-missing').onclick = () => {
       live().filter((c) => server.missing.includes(c.audio)).forEach((c) => removed.add(c.audio));
@@ -542,6 +556,11 @@
       if (p.add.length) items.push(`Add ${p.add.length} new clip${p.add.length > 1 ? 's' : ''}`);
       if (p.edit.length) items.push(`Update the tags of ${p.edit.length} published clip${p.edit.length > 1 ? 's' : ''}`);
       if (p.drop.length) items.push(`Remove ${p.drop.length} clip${p.drop.length > 1 ? 's' : ''} with missing audio`);
+      $('publish-title').textContent = onBranch() ? `Publish to ${server.branch}?` : 'Publish to GitHub Pages?';
+      $('publish-target').textContent = server.branch;
+      $('publish-after').textContent = onBranch()
+        ? ` The clips go live once it is merged into ${server.liveBranch}.`
+        : ' The team\'s page updates about a minute later.';
       $('publish-list').replaceChildren(...items.map((t) => { const li = document.createElement('li'); li.textContent = t; return li; }));
       $('confirm-publish').showModal();
     };

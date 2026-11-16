@@ -11,6 +11,7 @@
 .btn:disabled { opacity: .45; cursor: default; }
 
 .notice { margin: 0; padding: 10px 14px; border-radius: 12px; background: #fff7e6; color: #6b4a00; font-size: 13px; }
+.notice a { color: inherit; font-weight: 600; }
 
 .section-title { margin: 0 0 8px; font: 700 15px "Space Grotesk", sans-serif; }
 .section-title small { margin-left: 6px; font: 400 12px Inter, sans-serif; color: var(--muted); }
