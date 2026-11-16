@@ -31,8 +31,18 @@
 
   // ---------- model ----------
 
-  const isInbox = (audio) => inbox.some((c) => c.audio === audio);
-  const clipOf = (audio) => inbox.find((c) => c.audio === audio) || pub.find((c) => c.audio === audio);
+  // Lookups by audio path, rebuilt only when the lists change: the board asks for every chip on each redraw.
+  let index = null;
+  function lookup() {
+    if (!index || index.inbox !== inbox || index.pub !== pub || index.n !== inbox.length) {
+      const byAudio = new Map(pub.map((c) => [c.audio, c]));
+      inbox.forEach((c) => byAudio.set(c.audio, c)); // an inbox clip wins over a published one with the same path
+      index = { inbox, pub, n: inbox.length, byAudio, inboxSet: new Set(inbox.map((c) => c.audio)) };
+    }
+    return index;
+  }
+  const isInbox = (audio) => lookup().inboxSet.has(audio);
+  const clipOf = (audio) => lookup().byAudio.get(audio);
   const live = () => pub.filter((c) => !removed.has(c.audio));
   const allClips = () => live().concat(inbox);
   const first = (v) => (Array.isArray(v) ? v[0] : v) || '';
@@ -128,7 +138,7 @@
     },
     onChipClick(clip) {
       selected = clip.audio;
-      refresh(false);
+      showSelected();
     },
     orderColumns(values, key) {
       const none = board().NONE;
@@ -146,40 +156,60 @@
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
   // Redraw the board. A chip that changed column flies there; everything else slides into place.
+  // Only chips near the visible part of the board animate, and every position is read before any
+  // animation starts: reading a position after starting an animation makes the browser lay out the
+  // whole board again, which froze the page for seconds with a few thousand clips.
   function refresh(animate = true) {
+    const view = { top: -200, bottom: innerHeight + 200, left: -200, right: innerWidth + 200 };
+    const near = (r) => r.bottom > view.top && r.top < view.bottom && r.right > view.left && r.left < view.right;
     const rect = (el) => el.getBoundingClientRect();
-    const colBefore = new Map([...document.querySelectorAll('.column')].map((el) => [el.dataset.value, rect(el)]));
-    // A clip with several use cases has a chip in each of those columns, so key chips by column and audio.
     const chipKey = (el) => `${el.closest('.column').dataset.value}\n${el.dataset.audio}`;
-    const chipBefore = new Map([...document.querySelectorAll('.chip')].map((el) => [chipKey(el), rect(el)]));
-    const lastSeen = new Map([...document.querySelectorAll('.chip')].map((el) => [el.dataset.audio, rect(el)]));
+    // A clip with several use cases has a chip in each of those columns, so key chips by column and audio.
+    let colBefore, chipBefore, lastSeen;
+    const doAnimate = animate && !reduceMotion.matches;
+    if (doAnimate) {
+      colBefore = new Map([...document.querySelectorAll('.column')].map((el) => [el.dataset.value, rect(el)]));
+      chipBefore = new Map();
+      lastSeen = new Map();
+      document.querySelectorAll('.chip').forEach((el) => {
+        const r = rect(el);
+        if (!near(r)) return;
+        chipBefore.set(chipKey(el), r);
+        lastSeen.set(el.dataset.audio, r);
+      });
+    }
 
     board().update({ dimensions: boardDims(), clips: allClips() });
     renderSide();
-    if (!animate || reduceMotion.matches) return;
+    if (!doAnimate) return;
 
+    // Read everything first ...
     const ease = 'cubic-bezier(.2,.8,.2,1)';
-    const colShift = new Map();
-    document.querySelectorAll('.column').forEach((el) => {
-      const old = colBefore.get(el.dataset.value);
+    const cols = [...document.querySelectorAll('.column')].map((el) => ({ el, now: rect(el), old: colBefore.get(el.dataset.value) }));
+    const colShift = new Map(cols.filter((c) => c.old).map((c) => [c.el.dataset.value, { x: c.old.left - c.now.left, y: c.old.top - c.now.top }]));
+    const chips = [];
+    document.querySelectorAll('.chip').forEach((el) => {
+      const now = rect(el);
+      if (!near(now)) return;
+      const stayed = chipBefore.get(chipKey(el));
+      chips.push({ el, now, stayed, old: stayed || lastSeen.get(el.dataset.audio) });
+    });
+
+    // ... then start the animations.
+    cols.forEach(({ el, old }) => {
       if (!old) {
         el.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: ease });
         return;
       }
-      const now = rect(el);
-      const d = { x: old.left - now.left, y: old.top - now.top };
-      colShift.set(el.dataset.value, d);
+      const d = colShift.get(el.dataset.value);
       if (d.x || d.y) el.animate([{ transform: `translate(${d.x}px, ${d.y}px)` }, { transform: 'none' }], { duration: 300, easing: ease });
     });
-    document.querySelectorAll('.chip').forEach((el) => {
-      const stayed = chipBefore.get(chipKey(el));
-      const old = stayed || lastSeen.get(el.dataset.audio);
+    chips.forEach(({ el, now, stayed, old }) => {
       if (!old) {
         el.animate([{ opacity: 0, transform: 'translateY(-10px) scale(.8)' }, { opacity: 1, transform: 'none' }], { duration: 360, easing: ease });
         return;
       }
       const host = el.closest('.column');
-      const now = rect(el);
       let dx = old.left - now.left;
       let dy = old.top - now.top;
       const moved = !stayed;
@@ -196,6 +226,13 @@
       );
       if (moved) anim.finished.then(() => { host.style.zIndex = ''; }, () => {});
     });
+  }
+
+  // A new selection only moves the highlight; the board itself is unchanged, so it is not redrawn.
+  function showSelected() {
+    document.querySelectorAll('.chip.selected').forEach((el) => el.classList.remove('selected'));
+    if (selected) document.querySelectorAll(`.chip[data-audio="${CSS.escape(selected)}"]`).forEach((el) => el.classList.add('selected'));
+    renderSide();
   }
 
   // ---------- sidebar ----------
@@ -256,7 +293,7 @@
     }
     if (needGame.length && !needGame.some((c) => c.audio === selected)) {
       const link = button('more', `${plural(needGame.length, 'clip')} still need${needGame.length === 1 ? 's' : ''} a game →`);
-      link.onclick = () => { selected = needGame[0].audio; refresh(false); };
+      link.onclick = () => { selected = needGame[0].audio; showSelected(); };
       progress.append(link);
     }
 
@@ -420,7 +457,7 @@
     const next = nextUntagged(selected);
     if (!next) { toast('Every clip has a use case.'); return; }
     selected = next;
-    refresh(false);
+    showSelected();
     document.querySelector('.chip.selected')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     play(next);
   }
@@ -430,7 +467,7 @@
     if (!order.length) return;
     const at = order.indexOf(selected);
     selected = order[(at < 0 ? 0 : at + delta + order.length) % order.length];
-    refresh(false);
+    showSelected();
     document.querySelector('.chip.selected')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
@@ -443,7 +480,7 @@
     else if (e.key === '0') tag('');
     else if (e.key === 'n' || e.key === 'N') goNext();
     else if (e.key === '/' && selected) $('use-filter').focus();
-    else if (e.key === 'Escape' && selected) { selected = null; refresh(false); }
+    else if (e.key === 'Escape' && selected) { selected = null; showSelected(); }
     else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') step(1);
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') step(-1);
     else if (e.key === ' ' && selected) board().toggle(selected);
