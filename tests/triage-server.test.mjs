@@ -44,6 +44,8 @@ const AUDIO = {
   clash: audio(),            // inbox file "x?.mp3", whose safe name "x？.mp3" is already taken
   taken: audio(),            // inbox file "x？.mp3"
   dropped: audio(),          // inbox file "plain.mp3", dropped
+  subClash: audio(),         // inbox file "sub/c#d.mp3", whose safe name "sub/c＃d.mp3" is already taken
+  subTaken: audio(),         // inbox file "sub/c＃d.mp3"
 };
 
 function writeJson(rel, data) {
@@ -116,6 +118,9 @@ before(async () => {
   fs.writeFileSync(file('inbox', 'clips', 'x?.mp3'), AUDIO.clash);
   fs.writeFileSync(file('inbox', 'clips', 'x？.mp3'), AUDIO.taken);
   fs.writeFileSync(file('inbox', 'clips', 'plain.mp3'), AUDIO.dropped);
+  fs.mkdirSync(file('inbox', 'clips', 'sub'));
+  fs.writeFileSync(file('inbox', 'clips', 'sub', 'c#d.mp3'), AUDIO.subClash);
+  fs.writeFileSync(file('inbox', 'clips', 'sub', 'c＃d.mp3'), AUDIO.subTaken);
   writeJson('inbox/clips.json', {
     clips: [
       { title: '(?????)', audio: 'clips/0602_0029_(%3F%3F%3F%3F%3F).mp3', 'import-folder': 'export/', recording: '0602', 'source-game': 'B', 'use-case': 'Victory' },
@@ -123,6 +128,8 @@ before(async () => {
       { title: 'x?', audio: 'clips/x%3F.mp3' },
       { title: 'x？', audio: 'clips/x？.mp3' },
       { title: 'plain', audio: 'clips/plain.mp3', dropped: true },
+      { title: 'c#d', audio: 'clips/sub/c%23d.mp3' },
+      { title: 'c＃d', audio: 'clips/sub/c＃d.mp3' },
     ],
   });
 
@@ -159,16 +166,18 @@ after(() => {
 
 describe('start-up', () => {
   test('renames inbox files whose names have ?, # or % and updates their clips', () => {
-    assert.match(startupLog, /Renamed 3 inbox file\(s\)/);
-    const names = fs.readdirSync(file('inbox', 'clips')).sort();
-    assert.deepEqual(names, ['0602_0029_(？？？？？).mp3', 'a＃b.mp3', 'plain.mp3', 'x？-2.mp3', 'x？.mp3'].sort());
+    assert.match(startupLog, /Renamed 4 inbox file\(s\)/);
+    const names = fs.readdirSync(file('inbox', 'clips'), { recursive: true }).map((n) => n.split(path.sep).join('/')).sort();
+    assert.deepEqual(names, ['0602_0029_(？？？？？).mp3', 'a＃b.mp3', 'plain.mp3', 'sub', 'sub/c＃d-2.mp3', 'sub/c＃d.mp3', 'x？-2.mp3', 'x？.mp3'].sort());
     const clips = readJson('inbox', 'clips.json').clips;
     assert.deepEqual(clips.map((c) => c.audio), [
-      'clips/0602_0029_(？？？？？).mp3', 'clips/a＃b.mp3', 'clips/x？-2.mp3', 'clips/x？.mp3', 'clips/plain.mp3',
+      'clips/0602_0029_(？？？？？).mp3', 'clips/a＃b.mp3', 'clips/x？-2.mp3', 'clips/x？.mp3', 'clips/plain.mp3', 'clips/sub/c＃d-2.mp3', 'clips/sub/c＃d.mp3',
     ]);
     assert.equal(clips[0].title, '(?????)', 'the title keeps the original characters');
     assert.deepEqual(fs.readFileSync(file('inbox', 'clips', 'x？-2.mp3')), AUDIO.clash, 'a taken safe name gets -2');
     assert.deepEqual(fs.readFileSync(file('inbox', 'clips', 'x？.mp3')), AUDIO.taken, 'the file that had the name is untouched');
+    assert.deepEqual(fs.readFileSync(file('inbox', 'clips', 'sub', 'c＃d-2.mp3')), AUDIO.subClash, 'a taken name in a subfolder gets -2 too');
+    assert.deepEqual(fs.readFileSync(file('inbox', 'clips', 'sub', 'c＃d.mp3')), AUDIO.subTaken, 'and the subfolder file that had the name is untouched');
   });
 });
 
@@ -176,7 +185,7 @@ describe('GET /api/state', () => {
   test('reports the published list, the inbox, missing audio, hashes and the branch', async () => {
     const s = await state();
     assert.equal(s.published.clips.length, 3);
-    assert.equal(s.inbox.clips.length, 5);
+    assert.equal(s.inbox.clips.length, 7);
     assert.deepEqual(s.missing, ['clips/gone.mp3']);
     assert.equal(s.version, sha(fs.readFileSync(file('src', 'data', 'clips.json'))));
     assert.equal(s.branch, BRANCH);
@@ -185,7 +194,7 @@ describe('GET /api/state', () => {
     assert.equal(s.compareUrl, '', 'origin is not on GitHub');
     assert.equal(s.hashes['clips/grunt.mp3'], sha(AUDIO.published));
     assert.equal(s.hashes['clips/0602_0029_(？？？？？).mp3'], sha(AUDIO.question));
-    assert.equal(Object.keys(s.hashes).length, 7);
+    assert.equal(Object.keys(s.hashes).length, 9);
   });
 });
 
@@ -261,10 +270,32 @@ describe('audio', () => {
     });
   }
 
+  for (const range of ['bytes=33433-', 'bytes=99999-100000', 'bytes=-0']) {
+    test(`answers 416 to Range: ${range}, which asks for nothing in the file`, async () => {
+      const res = await get(question, { Range: range });
+      assert.equal(res.status, 416);
+      assert.equal(res.headers.get('content-range'), 'bytes */33433');
+    });
+  }
+
   test('ignores a Range it cannot read', async () => {
     const res = await get(question, { Range: 'bytes=abc-def' });
     assert.equal(res.status, 200);
     assert.equal(Number(res.headers.get('content-length')), 33433);
+  });
+});
+
+describe('requests must be addressed to this computer', () => {
+  for (const host of ['evil.example', `evil.example:${0}`]) {
+    test(`a request with Host: ${host} is refused (DNS rebinding)`, async () => {
+      const res = await rawGet('/api/state', { Host: host.replace(':0', `:${port}`) });
+      assert.equal(res.status, 403);
+      assert.ok(!res.body.toString().includes('clips'));
+    });
+  }
+
+  test('localhost works as well as 127.0.0.1', async () => {
+    assert.equal((await rawGet('/api/state', { Host: `localhost:${port}` })).status, 200);
   });
 });
 
@@ -316,6 +347,13 @@ describe('PUT /api/upload', () => {
       assert.equal((await upload(value, audio())).status, 400);
     });
   }
+
+  test('says a file is too large, rather than dropping the connection', async () => {
+    const res = await upload('clips/huge.mp3', Buffer.alloc(200 * 1024 * 1024 + 1));
+    assert.equal(res.status, 413);
+    assert.match((await res.json()).error, /too large/);
+    assert.ok(!fs.existsSync(file('inbox', 'clips', 'huge.mp3')));
+  });
 
   test('refuses a malformed escape', async () => {
     assert.equal((await send('PUT', '/api/upload?audio=%E0%A4%A', audio(), { json: false })).status, 400);
@@ -378,7 +416,33 @@ describe('POST /api/publish', () => {
     assert.match((await res.json()).error, /same audio file/);
   });
 
+  test('a failed commit undoes the publish and leaves every file as it was', async () => {
+    const s = await state();
+    const ready = s.inbox.clips.find((c) => c.title === '(?????)');
+    const published = { dimensions: s.published.dimensions, clips: [s.published.clips[0], ready] };
+    const inboxBefore = fs.readFileSync(file('inbox', 'clips.json'));
+    const dataBefore = fs.readFileSync(file('src', 'data', 'clips.json'));
+    const head = git('rev-parse', 'HEAD');
+    const hook = file('.git', 'hooks', 'pre-commit');
+    fs.writeFileSync(hook, '#!/bin/sh\necho hook says no >&2\nexit 1\n', { mode: 0o755 });
+    try {
+      const res = await send('POST', '/api/publish', { version: s.version, published, inbox: { clips: s.inbox.clips.filter((c) => c !== ready) } });
+      assert.equal(res.status, 409);
+      assert.match((await res.json()).error, /Nothing was published.*hook says no/s);
+    } finally {
+      fs.rmSync(hook);
+    }
+    assert.equal(git('rev-parse', 'HEAD'), head, 'no commit');
+    assert.equal(git('status', '--porcelain', '--', 'src'), '', 'nothing staged or changed under src/');
+    assert.deepEqual(fs.readFileSync(file('src', 'data', 'clips.json')), dataBefore);
+    assert.deepEqual(fs.readFileSync(file('inbox', 'clips.json')), inboxBefore);
+    assert.deepEqual(fs.readFileSync(file('inbox', 'clips', '0602_0029_(？？？？？).mp3')), AUDIO.question, 'the new clip is back in the inbox');
+    assert.deepEqual(fs.readFileSync(file('src', 'clips', 'old.mp3')), AUDIO.publishedOld, 'the dropped clip keeps its audio');
+    assert.ok(!fs.existsSync(file('inbox', '.publish-trash')));
+  });
+
   test('moves ready clips out of the inbox, drops removed ones, commits only src/ and pushes', async () => {
+    fs.writeFileSync(file('src', 'clips', 'stray.mp3'), audio()); // not part of this publish
     const s = await state();
     const ready = s.inbox.clips.find((c) => c.title === '(?????)');
     const rest = s.inbox.clips.filter((c) => c !== ready);
@@ -405,6 +469,9 @@ describe('POST /api/publish', () => {
     assert.equal(git('log', '-1', '--format=%s'), 'chore: publish 1 new clip, 1 removed clip');
     const changed = git('show', '--name-only', '--format=', 'HEAD').split('\n').map((p) => p.replace(/^"|"$/g, ''));
     assert.ok(changed.every((p) => p.startsWith('src/')), changed.join(', '));
+    assert.ok(!changed.includes('src/clips/stray.mp3'), 'a file this publish did not touch is not committed');
+    assert.match(git('status', '--porcelain', '--', 'src/clips/stray.mp3'), /^\?\?/);
+    fs.rmSync(file('src', 'clips', 'stray.mp3'));
     assert.equal(git('rev-parse', `origin/${BRANCH}`), git('rev-parse', 'HEAD'));
     assert.equal(execFileSync('git', ['rev-parse', BRANCH], { cwd: remote, encoding: 'utf8' }).trim(), git('rev-parse', 'HEAD'));
 

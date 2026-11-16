@@ -201,9 +201,72 @@ function publish(body) {
     if (!isLocal(c.audio)) continue;
     const siteFile = audioFile(SITE, c.audio);
     const inboxFile = audioFile(INBOX, c.audio);
-    if (isFile(inboxFile)) moves.push([inboxFile, siteFile]);
+    if (isFile(inboxFile)) {
+      if (fs.existsSync(siteFile)) throw new Refused(`${c.audio} is already in src/clips. Rename the inbox clip and publish again.`, 409);
+      moves.push([inboxFile, siteFile]);
+    }
   }
-  for (const [src, dest] of moves) moveFile(src, dest);
+
+  // Audio of clips that left the list (dropped in the triage page) is deleted, and git stages the removal.
+  const before = new Set((readJson(DATA, { clips: [] }).clips || []).filter((c) => isLocal(c.audio)).map((c) => c.audio));
+  const after = new Set(clips.filter((c) => isLocal(c.audio)).map((c) => c.audio));
+  const drops = [];
+  for (const audio of before) {
+    if (after.has(audio)) continue;
+    let file;
+    try { file = audioFile(SITE, audio); } catch { continue; }
+    if (isFile(file)) drops.push(file);
+  }
+
+  // Only the files this publish touches are staged and committed, so nothing else under src/clips
+  // goes live by accident. A dropped file git never tracked has nothing to stage.
+  const rel = (p) => path.relative(REPO, p).split(path.sep).join('/');
+  const tracked = new Set(drops.length ? git(['ls-files', '-z', '--', ...drops.map(rel)]).split('\0').filter(Boolean) : []);
+  const paths = ['--', rel(DATA), ...moves.map(([, dest]) => rel(dest)), ...drops.map(rel).filter((p) => tracked.has(p))];
+
+  // Everything below is undone if a step fails before the commit lands, so a failed publish
+  // (a git hook, no git identity) leaves the inbox, src/clips and clips.json as they were.
+  const oldData = fs.readFileSync(DATA);
+  const oldInbox = fs.existsSync(INBOX_DATA) ? fs.readFileSync(INBOX_DATA) : null;
+  const trash = path.join(INBOX, '.publish-trash');
+  const done = { moved: [], trashed: [], staged: false };
+  let summary;
+  let commit;
+  try {
+    for (const [src, dest] of moves) { moveFile(src, dest); done.moved.push([src, dest]); }
+    fs.rmSync(trash, { recursive: true, force: true });
+    for (const [i, file] of drops.entries()) {
+      const kept = path.join(trash, String(i));
+      moveFile(file, kept);
+      done.trashed.push([kept, file]);
+    }
+    const dims = (published.dimensions || []).filter((d) => d && typeof d === 'object' && d.key);
+    writeJson(DATA, { dimensions: dims, clips });
+    writeJson(INBOX_DATA, { clips: inboxClips });
+
+    done.staged = true;
+    git(['add', '-A', ...paths]);
+    if (!git(['diff', '--cached', '--name-only', ...paths])) {
+      fs.rmSync(trash, { recursive: true, force: true });
+      return { committed: false, message: 'Nothing changed, so nothing was published.' };
+    }
+    const parts = [];
+    if (moves.length) parts.push(plural(moves.length, 'new clip'));
+    if (drops.length) parts.push(plural(drops.length, 'removed clip'));
+    summary = parts.join(', ') || 'clip tags';
+    git(['commit', '--quiet', '-m', `chore: publish ${summary}`, ...paths]);
+    commit = git(['rev-parse', '--short', 'HEAD']);
+  } catch (err) {
+    if (done.staged) git(['reset', '--quiet', ...paths], { check: false });
+    fs.writeFileSync(DATA, oldData);
+    if (oldInbox) fs.writeFileSync(INBOX_DATA, oldInbox);
+    for (const [kept, file] of done.trashed.reverse()) moveFile(kept, file);
+    for (const [src, dest] of done.moved.reverse()) moveFile(dest, src);
+    fs.rmSync(trash, { recursive: true, force: true });
+    if (err instanceof Refused) err.message = `Nothing was published, and your clips are as they were. ${err.message}`;
+    throw err;
+  }
+  fs.rmSync(trash, { recursive: true, force: true });
   const emptied = [...new Set(moves.map(([src]) => path.dirname(src)))].sort((a, b) => b.split(path.sep).length - a.split(path.sep).length);
   for (let dir of emptied) {
     while (dir !== INBOX && within(INBOX, dir) && isDir(dir) && !fs.readdirSync(dir).length) {
@@ -211,35 +274,6 @@ function publish(body) {
       dir = path.dirname(dir);
     }
   }
-
-  // Audio of clips that left the list (dropped in the triage page) is deleted, and git stages the removal.
-  const before = new Set((readJson(DATA, { clips: [] }).clips || []).filter((c) => isLocal(c.audio)).map((c) => c.audio));
-  const after = new Set(clips.filter((c) => isLocal(c.audio)).map((c) => c.audio));
-  let dropped = 0;
-  for (const audio of before) {
-    if (after.has(audio)) continue;
-    let file;
-    try { file = audioFile(SITE, audio); } catch { continue; }
-    if (isFile(file)) {
-      fs.unlinkSync(file);
-      dropped++;
-    }
-  }
-
-  const dims = (published.dimensions || []).filter((d) => d && typeof d === 'object' && d.key);
-  writeJson(DATA, { dimensions: dims, clips });
-  writeJson(INBOX_DATA, { clips: inboxClips });
-
-  git(['add', '--', 'src/data/clips.json', 'src/clips']);
-  if (!git(['diff', '--cached', '--name-only', '--', 'src/data/clips.json', 'src/clips'])) {
-    return { committed: false, message: 'Nothing changed, so nothing was published.' };
-  }
-  const parts = [];
-  if (moves.length) parts.push(plural(moves.length, 'new clip'));
-  if (dropped) parts.push(plural(dropped, 'removed clip'));
-  const summary = parts.join(', ') || 'clip tags';
-  git(['commit', '--quiet', '-m', `chore: publish ${summary}`, '--', 'src/data/clips.json', 'src/clips']);
-  const commit = git(['rev-parse', '--short', 'HEAD']);
   const push = spawnSync('git', ['push', '--quiet', '--set-upstream', 'origin', branch], { cwd: REPO, encoding: 'utf8' });
   if (push.status !== 0) {
     return { committed: true, pushed: false, commit, message: `Committed ${commit}, but the push failed: ${(push.stderr || '').trim()} Fix it, then push ${branch}.` };
@@ -281,6 +315,10 @@ function sendFile(req, res, file) {
     }
     if (Number.isNaN(start) || Number.isNaN(end)) { partial = false; start = 0; end = size - 1; }
     end = Math.min(end, size - 1);
+    if (partial && start > end) { // starts past the end of the file, or asks for none of it
+      res.writeHead(416, { 'Content-Range': `bytes */${size}` });
+      return res.end();
+    }
   }
   const length = Math.max(0, end - start + 1);
   const headers = {
@@ -303,18 +341,16 @@ function sendStatic(req, res, base, rel) {
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
+    // Too large a body is read to the end and thrown away, not cut off: closing the connection early
+    // would lose the 413 reply, and the page would show a network error instead of the reason.
     const chunks = [];
     let size = 0;
     req.on('data', (chunk) => {
       size += chunk.length;
-      if (size > MAX_UPLOAD) {
-        reject(new Refused('file too large', 413));
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
+      if (size <= MAX_UPLOAD) chunks.push(chunk);
+      else chunks.length = 0;
     });
-    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('end', () => (size > MAX_UPLOAD ? reject(new Refused('file too large', 413)) : resolve(Buffer.concat(chunks))));
     req.on('error', reject);
   });
 }
@@ -379,8 +415,16 @@ async function handleWrite(req, res, url) {
 }
 
 function makeServer(port) {
-  const allowedOrigins = new Set([`http://127.0.0.1:${port}`, `http://localhost:${port}`]);
+  const allowedHosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
+  const allowedOrigins = new Set([...allowedHosts].map((h) => `http://${h}`));
   return http.createServer(async (req, res) => {
+    // Only answer requests addressed to this computer: blocks a website that points its own name at
+    // 127.0.0.1 (DNS rebinding) from reading the inbox.
+    if (!allowedHosts.has(req.headers.host)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Open the triage page at http://127.0.0.1:' + port + '/');
+      return;
+    }
     const url = new URL(req.url, 'http://127.0.0.1');
     if (req.method === 'GET') {
       try {
@@ -428,11 +472,13 @@ function renameUnsafeInboxFiles() {
     if (safe === path.basename(old) || !isFile(old)) continue;
     const dot = safe.lastIndexOf('.');
     const [stem, suffix] = [safe.slice(0, dot), safe.slice(dot)];
+    const dir = path.dirname(old);
+    const key = (name) => `clips/${path.relative(path.join(INBOX, 'clips'), path.join(dir, name)).split(path.sep).join('/')}`.toLowerCase();
     let name = safe;
-    for (let n = 2; taken.has(`clips/${name}`.toLowerCase()); n++) name = `${stem}-${n}${suffix}`;
-    const renamedTo = path.join(path.dirname(old), name);
+    for (let n = 2; taken.has(key(name)) || fs.existsSync(path.join(dir, name)); n++) name = `${stem}-${n}${suffix}`;
+    const renamedTo = path.join(dir, name);
     fs.renameSync(old, renamedTo);
-    taken.add(`clips/${name}`.toLowerCase());
+    taken.add(key(name));
     const rel = path.relative(path.join(INBOX, 'clips'), renamedTo).split(path.sep).join('/');
     c.audio = urlPath(`clips/${rel}`);
     renamed++;
