@@ -332,13 +332,19 @@
       play.innerHTML = ICON_PLAY;
       play.title = 'Play or stop (Space)';
       play.onclick = () => board().toggle(clip.audio);
-      const where = el('small', '', isInbox(clip.audio) ? 'not published' : 'published', isDropped(clip) ? ' · dropped' : '');
-      const dropBtn = button('btn quiet small drop-btn', isDropped(clip) ? 'Restore ' : 'Drop ', kbd('D'));
+      // The game is set per folder on import and rarely changes, so it sits quietly in the subtitle;
+      // only a clip without a game gets the full menu below the card.
+      const hasGame = Boolean(first(clip[GAME]));
+      const where = el('small', '', hasGame ? gameMenu(clip) : null, hasGame ? ' · ' : '',
+        isInbox(clip.audio) ? 'not published' : 'published', isDropped(clip) ? ' · dropped' : '');
+      const dropBtn = button('drop-btn', isDropped(clip) ? 'Restore' : 'Drop', kbd('D'));
       dropBtn.title = isDropped(clip)
         ? 'Bring this clip back from the Dropped column'
         : isInbox(clip.audio) ? 'Move this clip to the Dropped column; it is never published' : 'Remove this clip from the gallery on the next Publish';
       dropBtn.onclick = toggleDrop;
-      $('now').replaceChildren(el('div', 'now', play, el('div', 'now-text', el('b', '', clip.title), where)), isDropped(clip) ? null : gameMenu(clip), dropBtn);
+      $('now').replaceChildren(
+        el('div', 'now' + (isDropped(clip) ? ' is-dropped' : ''), play, el('div', 'now-text', el('b', '', clip.title), where), dropBtn),
+        ...(hasGame || isDropped(clip) ? [] : [gameMenu(clip)]));
     } else {
       const next = nextUntagged(null);
       const card = el('div', 'now empty', el('b', '', 'No clip selected'));
@@ -402,7 +408,8 @@
       select.blur(); // so the number keys work again
       refresh();
     };
-    return el('label', 'now-game' + (current ? '' : ' needs'), 'Game', select);
+    select.title = 'Source game (set per folder on import)';
+    return current ? el('span', 'game-inline', select) : el('label', 'now-game needs', 'Game', select);
   }
 
   function renderActions() {
