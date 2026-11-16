@@ -9,8 +9,8 @@
     { "key": "source-game", "label": "Source game" }
   ],
   "clips": [
-    { "title": "grunt", "audio": "clips/game-a/grunt.ogg", "source-game": "Game A", "use-case": "Hurt" },
-    { "title": "huh", "audio": "clips/game-b/huh.ogg", "source-game": "Game B", "use-case": ["UI feedback", "Idle chatter"] }
+    { "title": "grunt", "audio": "clips/grunt.ogg", "source-game": "Game A", "use-case": "Hurt" },
+    { "title": "huh", "audio": "clips/huh.ogg", "source-game": "Game B", "use-case": ["UI feedback", "Idle chatter"] }
   ]
 }
 ```

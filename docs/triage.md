@@ -1,6 +1,6 @@
 # Importing and triaging clips
 
-New clips go through a triage page that runs only on your computer. You import exported clips, give each folder a source game and each clip a use case, then publish them. The team's GitHub Pages site only ever shows published clips.
+New clips go through a triage page that runs only on your computer. You import exported clips with their source game, give each clip a use case, then publish them. The team's GitHub Pages site only ever shows published clips.
 
 ## Opening the triage page
 
@@ -13,22 +13,28 @@ The first time, macOS may ask whether to open the file; choose Open.
 ## Importing
 
 1. Click **+ Import** at the top of the sidebar, then **Choose folder…** or drop an export folder onto the box.
-2. Every audio file in the folder and its subfolders is listed with its title, recording and file name. Play any of them to check. New clips are ticked; clips already in the gallery are greyed out.
-3. **Copy into clips/** sets the folder the clips go into (for example `clips/0526-session/`). Keep one folder per game, since games are set per folder.
+2. Every audio file in the folder and its subfolders is listed with its title, recording and file name. Play any of them to check. **Change folder** goes back to pick a different export.
+3. Pick the **Source game**, or **+ New game…**. Every clip in this import gets that game. **Import** stays off until you pick one.
 4. Click **Import**. The clips are copied into `inbox/` in the repository, which git ignores, and appear in the **Untagged** column.
+
+All clips are stored flat in `clips/` under their export file name; subfolders in the export are not kept. While listing, the page checks each file's audio content (a SHA-256 hash) against the gallery:
+
+- **Already imported:** the same audio is already a clip, even under another file name. It is greyed out and not imported again.
+- **Repeat:** the same audio appears twice in the export folder; only the first is imported.
+- **Saved as …-2:** a different clip already has this file name, so `-2` (or `-3`, and so on) is added before the extension.
 
 Titles come from the file names. Files exported by jipandan-clip are named `<recording>_<clip id>_<title>.mp3`, so the title is the last part and the recording name goes into a `recording` dimension. Other files use their whole name as the title.
 
 ## Triaging
 
-The page has a sidebar for the triage work and the board on the right. The sidebar has two tabs, and **Publish** stays at its bottom.
+The page has a sidebar for the triage work and the board on the right, with **Publish** always at the bottom of the sidebar.
 
-- **Tag clips tab:** shows how many new clips have a use case, and the selected clip.
+- **Sidebar:** shows how many new clips have a use case, and the selected clip.
   - Click a chip to play and select it, or press **N** (or **Next untagged**) to jump to the next clip without a use case.
   - Click a use case, or press its number. The clip moves into that column and the next untagged clip starts playing. **Untag** (or 0) clears it.
   - Keys 1–9 go to the most-used use cases when the page opens, and stay put while you work. New use cases take any free key.
   - With many use cases, only the first 15 show; **Show all** lists the rest. Type in **Filter or create…** (or press **/**) to narrow them. Enter picks the first match, or creates the typed use case when nothing matches.
-- **Folders tab:** each clip folder gets one game. Pick it (or **New game…**) and every clip in the folder gets that `source-game`; clips imported later into the same folder get it automatically. The tab shows a red count while folders still need a game, and lists only those by default. **All** shows every folder, grouped by game, and the filter box finds one by name.
+  - **Game** under the selected clip changes that one clip's `source-game`, for a clip whose game differs from the rest of its import. If any clip has no game, a link above jumps to it.
 - Keys: Space plays or stops the selected clip, the arrow keys move between clips, 1–9 tag, 0 untags, N jumps to the next untagged clip, / filters use cases, Esc deselects.
 - Published clips are on the board too, so you can change their tags. A small orange dot marks a clip that is not published or has unpublished changes.
 

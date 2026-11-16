@@ -68,6 +68,33 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else ""
 
 
+_hash_cache: dict[Path, tuple[int, int, str]] = {}
+
+
+def audio_hashes() -> dict:
+    """SHA-256 of every audio file under src/clips/ and inbox/clips/, keyed by its `audio` value.
+
+    The page uses them to spot an export file that is already in the gallery under any name, and
+    to see which file names are taken. Hashes are cached by size and modification time.
+    """
+    out = {}
+    for base in (SITE, INBOX):
+        root = base / "clips"
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*")):
+            if not path.is_file() or path.suffix.lower() not in AUDIO_SUFFIXES or path.name.startswith("."):
+                continue
+            st = path.stat()
+            cached = _hash_cache.get(path)
+            if not cached or cached[:2] != (st.st_size, st.st_mtime_ns):
+                cached = (st.st_size, st.st_mtime_ns, digest(path))
+                _hash_cache[path] = cached
+            rel = path.relative_to(base).as_posix()
+            out.setdefault(rel.replace("%", "%25").replace("#", "%23"), cached[2])
+    return out
+
+
 def audio_file(base: Path, audio: str) -> Path:
     """Map a clip's `audio` value (a URL path such as clips/game/a%23b.mp3) to a file under base."""
     if not isinstance(audio, str) or not audio.startswith("clips/"):
@@ -116,6 +143,7 @@ def state() -> dict:
         "published": published,
         "inbox": inbox,
         "missing": missing,
+        "hashes": audio_hashes(),
         "version": digest(DATA),
         "branch": branch,
         "canPublish": bool(branch),
@@ -288,8 +316,14 @@ def make_handler(port: int):
                 audio = unquote(url.query.removeprefix("audio=")) if url.query.startswith("audio=") else ""
                 target = audio_file(INBOX, audio)
                 data = self.body()
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(data)
+                # Never overwrite a different clip: the page picks a free name, so a taken one means the page is
+                # out of date. The same bytes again (a retried import) are fine.
+                same = {p: digest(p) == hashlib.sha256(data).hexdigest() for p in (target, audio_file(SITE, audio)) if p.exists()}
+                if not all(same.values()):
+                    raise Refused(f"{unquote(audio)} already exists. Reload the page and import again.", HTTPStatus.CONFLICT)
+                if not same:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(data)
                 self.send_json(HTTPStatus.OK, {"ok": True})
             except Refused as err:
                 self.send_json(err.status, {"error": str(err)})

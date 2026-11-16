@@ -1,4 +1,4 @@
-// Triage page: import exported clips, give each folder a game and each clip a use case, then publish.
+// Triage page: import exported clips with a game, give each clip a use case, then publish.
 //
 // The board itself is the viewer's src/assets/app.js. This script loads before it, sets
 // `window.clipBoardHooks`, and redraws the board through `window.clipBoard` after each change.
@@ -32,7 +32,6 @@
 
   const isInbox = (audio) => inbox.some((c) => c.audio === audio);
   const clipOf = (audio) => inbox.find((c) => c.audio === audio) || pub.find((c) => c.audio === audio);
-  const folderOf = (audio) => audio.split('/').slice(0, 2).join('/') + '/';
   const live = () => pub.filter((c) => !removed.has(c.audio));
   const allClips = () => live().concat(inbox);
   const first = (v) => (Array.isArray(v) ? v[0] : v) || '';
@@ -202,8 +201,6 @@
 
   const KEY_SLOTS = 9;  // use cases on the number keys
   const PILL_CAP = 15;  // pills shown before "Show all"
-  let tab = 'tag';
-  let folderMode = null; // 'needs' or 'all'; null picks one from the data
   let showAllUses = false;
   let keyed = [];        // use cases on keys 1–9, in key order
 
@@ -236,38 +233,14 @@
     return keyed;
   }
 
-  function folderGroups() {
-    const groups = new Map();
-    allClips().forEach((c) => {
-      if (!c.audio || !c.audio.startsWith('clips/')) return;
-      const f = folderOf(c.audio);
-      if (!groups.has(f)) groups.set(f, []);
-      groups.get(f).push(c);
-    });
-    return [...groups].map(([folder, list]) => {
-      const values = new Set(list.map((c) => first(c[GAME])));
-      return { folder, list, game: values.size === 1 ? [...values][0] : '', mixed: values.size > 1 };
-    });
-  }
-
-  function setTab(name) {
-    tab = name;
-    for (const t of ['tag', 'folders']) {
-      $(`tab-${t}`).classList.toggle('on', t === name);
-      $(`tab-${t}`).setAttribute('aria-selected', String(t === name));
-      $(`panel-${t}`).hidden = t !== name;
-    }
-  }
-
   function renderSide() {
     renderTagPanel();
-    renderFolders();
     renderActions();
   }
 
   function renderTagPanel() {
     const clip = selected && clipOf(selected);
-    const needGame = folderGroups().filter((g) => !g.game).length;
+    const needGame = allClips().filter((c) => !has(c, GAME));
 
     // Progress over the clips waiting in the inbox.
     const total = inbox.length;
@@ -280,9 +253,9 @@
     } else {
       progress.replaceChildren(el('span', '', 'No new clips waiting. Use ', el('b', '', '+ Import'), ' to add some.'));
     }
-    if (needGame) {
-      const link = button('more', `${plural(needGame, 'folder')} still need${needGame === 1 ? 's' : ''} a game →`);
-      link.onclick = () => setTab('folders');
+    if (needGame.length && !needGame.some((c) => c.audio === selected)) {
+      const link = button('more', `${plural(needGame.length, 'clip')} still need${needGame.length === 1 ? 's' : ''} a game →`);
+      link.onclick = () => { selected = needGame[0].audio; refresh(false); };
       progress.append(link);
     }
 
@@ -292,9 +265,8 @@
       play.innerHTML = ICON_PLAY;
       play.title = 'Play or stop (Space)';
       play.onclick = () => board().toggle(clip.audio);
-      const game = first(clip[GAME]);
-      const where = el('small', '', folderOf(clip.audio), ' · ', game || 'no game yet', isInbox(clip.audio) ? ' · not published' : '');
-      $('now').replaceChildren(el('div', 'now', play, el('div', 'now-text', el('b', '', clip.title), where)));
+      const where = el('small', '', isInbox(clip.audio) ? 'not published' : 'published');
+      $('now').replaceChildren(el('div', 'now', play, el('div', 'now-text', el('b', '', clip.title), where)), gameMenu(clip));
     } else {
       const next = nextUntagged(null);
       const card = el('div', 'now empty', el('b', '', 'No clip selected'));
@@ -342,55 +314,23 @@
     $('untag').hidden = !mine.length;
   }
 
-  function renderFolders() {
-    const groups = folderGroups();
-    const needs = groups.filter((g) => !g.game);
-    const badge = $('folders-count');
-    badge.hidden = !needs.length;
-    badge.textContent = needs.length;
-
-    const mode = folderMode || (needs.length ? 'needs' : 'all');
-    $('mode-needs').textContent = `Needs a game (${needs.length})`;
-    $('mode-all').textContent = `All (${groups.length})`;
-    $('mode-needs').classList.toggle('on', mode === 'needs');
-    $('mode-all').classList.toggle('on', mode === 'all');
-
-    const q = $('folder-filter').value.trim().toLowerCase();
-    const list = (mode === 'needs' ? needs : groups).filter((g) => g.folder.toLowerCase().includes(q));
-    const known = games();
-    const byGame = new Map();
-    list.forEach((g) => {
-      const key = g.game || '';
-      if (!byGame.has(key)) byGame.set(key, []);
-      byGame.get(key).push(g);
-    });
-    const sections = [...byGame].sort(([a], [b]) => (a ? 1 : 0) - (b ? 1 : 0) || a.localeCompare(b)).map(([game, items]) => {
-      const rows = items.map(({ folder, list: clips, game: current, mixed }) => {
-        const waiting = clips.filter((c) => isInbox(c.audio)).length;
-        const select = document.createElement('select');
-        const opts = [['', mixed ? 'Mixed games' : 'Pick a game…'], ...known.map((g) => [g, g]), ['+', '+ New game…']];
-        select.replaceChildren(...opts.map(([v, label]) => new Option(label, v)));
-        select.value = current;
-        select.setAttribute('aria-label', `Game for ${folder}`);
-        select.onchange = () => {
-          let value = select.value;
-          if (value === '+') value = (prompt('Name of the new game') || '').trim();
-          if (!value) { select.value = current; return; }
-          clips.forEach((c) => { clipOf(c.audio)[GAME] = value; });
-          saveInbox();
-          refresh();
-        };
-        const count = el('span', 'n', plural(clips.length, 'clip') + (waiting ? ` · ${waiting} new` : ''));
-        return el('div', 'fold' + (current ? '' : ' needs'), el('div', 'line', el('code', '', folder), count), select);
-      });
-      return el('div', 'fold-group', el('h3', 'side-label', game || 'No game yet'), ...rows);
-    });
-    if (!sections.length) {
-      const text = !groups.length ? 'No clip folders yet. Import some clips first.'
-        : q ? 'No folders match.' : 'Every folder has a game.';
-      sections.push(el('p', 'hint center', text));
-    }
-    $('folders').replaceChildren(...sections);
+  // The selected clip's game, for the odd clip whose game differs from the rest of its import.
+  function gameMenu(clip) {
+    const current = first(clip[GAME]);
+    const select = document.createElement('select');
+    const opts = [...(current ? [] : [['', 'Pick a game…']]), ...games().map((g) => [g, g]), ['+', '+ New game…']];
+    select.replaceChildren(...opts.map(([v, label]) => new Option(label, v)));
+    select.value = current;
+    select.onchange = () => {
+      let value = select.value;
+      if (value === '+') value = (prompt('Name of the new game') || '').trim();
+      if (!value) { select.value = current; return; }
+      clip[GAME] = value;
+      if (isInbox(clip.audio)) saveInbox();
+      select.blur(); // so the number keys work again
+      refresh();
+    };
+    return el('label', 'now-game' + (current ? '' : ' needs'), 'Game', select);
   }
 
   function renderActions() {
@@ -425,11 +365,6 @@
   }
 
   function wireSide() {
-    $('tab-tag').onclick = () => setTab('tag');
-    $('tab-folders').onclick = () => setTab('folders');
-    $('mode-needs').onclick = () => { folderMode = 'needs'; renderFolders(); };
-    $('mode-all').onclick = () => { folderMode = 'all'; renderFolders(); };
-    $('folder-filter').oninput = renderFolders;
     $('more-uses').onclick = () => { showAllUses = !showAllUses; renderTagPanel(); };
     $('untag').onclick = () => tag('');
     const filter = $('use-filter');
@@ -484,7 +419,6 @@
     const next = nextUntagged(selected);
     if (!next) { toast('Every clip has a use case.'); return; }
     selected = next;
-    setTab('tag');
     refresh(false);
     document.querySelector('.chip.selected')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     play(next);
@@ -507,7 +441,7 @@
     if (/^[1-9]$/.test(e.key) && cases[e.key - 1]) tag(cases[e.key - 1]);
     else if (e.key === '0') tag('');
     else if (e.key === 'n' || e.key === 'N') goNext();
-    else if (e.key === '/' && selected) { setTab('tag'); $('use-filter').focus(); }
+    else if (e.key === '/' && selected) $('use-filter').focus();
     else if (e.key === 'Escape' && selected) { selected = null; refresh(false); }
     else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') step(1);
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') step(-1);
@@ -518,13 +452,19 @@
 
   // ---------- import ----------
 
+  // Every clip is stored flat in clips/ under its export file name. A file whose audio is already in
+  // the gallery (by SHA-256, under any name) counts as imported; a different clip with a taken name
+  // gets "-2", "-3"… added before the extension.
+
   const preview = new Audio();
-  let found = [];   // [{ file, rel, title, recording, audio, done, checked }]
+  let found = [];     // [{ file, rel, title, recording, hash, audio, saveAs, renamed, dupOf, sameAs, done, checked }]
   let previewing = null;
+  let checking = 0;   // files hashed so far while checking, or 0 when done
+  let scan = 0;       // bumps on every new folder, so a stale check stops
 
   const nfc = (s) => s.normalize('NFC');
-  const slug = (s) => nfc(s).trim().toLowerCase().replace(/[^\p{L}\p{N}_-]+/gu, '-').replace(/^-+|-+$/g, '') || 'clips';
   const urlPath = (s) => s.replace(/%/g, '%25').replace(/#/g, '%23');
+  const fold = (s) => s.toLowerCase(); // macOS file names ignore case
 
   function parseName(name) {
     const stem = nfc(name).replace(/\.[^.]+$/, '');
@@ -532,28 +472,80 @@
     return m && m[3].trim() ? { title: m[3].trim(), recording: m[1] } : { title: stem, recording: '' };
   }
 
-  function audioFor(rel) {
-    return `clips/${slug($('dest').value) || 'clips'}/${urlPath(nfc(rel))}`;
+  async function sha256(file) {
+    const buf = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  function showFound(folderName, files) {
-    $('dest').value = slug(folderName);
-    found = files
-      .filter((f) => AUDIO.test(f.file.name) && !f.file.name.startsWith('.'))
-      .map((f) => ({ ...f, ...parseName(f.file.name) }))
+  function withSuffix(name, n) {
+    const dot = name.lastIndexOf('.');
+    return dot > 0 ? `${name.slice(0, dot)}-${n}${name.slice(dot)}` : `${name}-${n}`;
+  }
+
+  // Decide where each file goes: already in the gallery, a repeat within this folder, or a free name in clips/.
+  function plan() {
+    const hashes = server.hashes || {};
+    const clipByHash = new Map();
+    allClips().forEach((c) => { const h = hashes[c.audio]; if (h && !clipByHash.has(h)) clipByHash.set(h, c); });
+    const taken = new Set([...Object.keys(hashes), ...allClips().map((c) => c.audio)].map(fold));
+    const firstWith = new Map(); // hash -> first file in this folder with that audio
+    for (const f of found) {
+      f.dupOf = clipByHash.get(f.hash) || null;
+      f.sameAs = f.dupOf ? null : firstWith.get(f.hash) || null;
+      f.done = Boolean(f.dupOf || f.sameAs);
+      f.audio = '';
+      if (f.done) continue;
+      firstWith.set(f.hash, f);
+      const base = nfc(f.file.name);
+      let name = base;
+      for (let n = 2; taken.has(fold(`clips/${urlPath(name)}`)); n++) name = withSuffix(base, n);
+      f.saveAs = name;
+      f.renamed = name !== base;
+      f.audio = `clips/${urlPath(name)}`;
+      taken.add(fold(f.audio));
+    }
+  }
+
+  async function showFound(folderName, files) {
+    const audio = files.filter((f) => AUDIO.test(f.file.name) && !f.file.name.startsWith('.'));
+    if (!audio.length) { toast('No audio files in that folder.', true); return; }
+    const id = ++scan;
+    found = audio.map((f) => ({ ...f, ...parseName(f.file.name), checked: false, done: false }))
       .sort((a, b) => a.rel.localeCompare(b.rel));
-    if (!found.length) { toast('No audio files in that folder.', true); return; }
-    markDone();
-    found.forEach((f) => (f.checked = !f.done));
     $('drop').hidden = true;
-    $('picked').hidden = $('found').hidden = $('select-new').hidden = $('select-none').hidden = false;
+    $('picked').hidden = $('game-pick').hidden = $('found').hidden = $('select-new').hidden = $('select-none').hidden = false;
     $('picked-name').textContent = `📁 ${folderName}`;
+    renderGamePick();
+    checking = 1;
+    renderFound();
+    for (const [i, f] of found.entries()) {
+      try { f.hash = await sha256(f.file); } catch { f.hash = `unreadable:${i}`; }
+      if (id !== scan) return;
+      checking = i + 1;
+      summary();
+    }
+    plan();
+    found.forEach((f) => (f.checked = !f.done));
+    checking = 0;
     renderFound();
   }
 
-  function markDone() {
-    const known = new Set(allClips().map((c) => c.audio));
-    found.forEach((f) => { f.audio = audioFor(f.rel); f.done = known.has(f.audio); if (f.done) f.checked = false; });
+  function importGame() {
+    return $('import-game').value === '+' ? $('import-new-game').value.trim() : $('import-game').value;
+  }
+
+  function renderGamePick() {
+    const list = games();
+    $('import-game').replaceChildren(new Option('Choose a game…', ''), ...list.map((g) => new Option(g, g)), new Option('+ New game…', '+'));
+    $('import-game').value = '';
+    $('import-new-game').value = '';
+    gameChanged();
+  }
+
+  function gameChanged() {
+    $('import-new-game').hidden = $('import-game').value !== '+';
+    $('game-pick').classList.toggle('missing', !importGame());
+    summary();
   }
 
   function renderFound() {
@@ -579,16 +571,22 @@
       const box = document.createElement('input');
       box.type = 'checkbox';
       box.checked = f.checked;
-      box.disabled = f.done;
+      box.disabled = f.done || Boolean(checking);
       box.onchange = () => { f.checked = box.checked; summary(); };
-      const text = document.createElement('span');
-      const t = document.createElement('span');
-      t.className = 't';
-      t.textContent = f.title;
-      const meta = document.createElement('span');
-      meta.className = 'meta';
-      meta.textContent = (f.done ? 'Already imported · ' : '') + (f.recording ? `recording ${f.recording} · ` : '') + f.rel;
-      text.append(t, document.createElement('br'), meta);
+      const note = (text, cls = '') => el('span', 'note' + (cls ? ` ${cls}` : ''), text);
+      const meta = [f.recording ? `recording ${f.recording}` : '', f.rel];
+      let badge = null;
+      if (f.dupOf) {
+        badge = note(f.dupOf.title === f.title ? 'already imported' : `already imported as “${f.dupOf.title}”`);
+        if (f.dupOf.title !== f.title) meta.push('same audio, different name');
+      } else if (f.sameAs) {
+        badge = note('repeat');
+        meta.push(`same audio as ${f.sameAs.rel}`);
+      } else if (f.renamed) {
+        badge = note(`saved as ${f.saveAs}`, 'renamed');
+        meta.push('a different clip already has this name');
+      }
+      const text = el('span', '', el('span', 't', f.title), badge, document.createElement('br'), el('span', 'meta', meta.filter(Boolean).join(' · ')));
       label.append(box, text);
       li.append(play, label);
       return li;
@@ -598,20 +596,33 @@
   preview.addEventListener('ended', () => { previewing = null; renderFound(); });
 
   function summary() {
-    const n = found.filter((f) => f.checked).length;
-    const done = found.filter((f) => f.done).length;
-    $('found-summary').textContent = found.length ? `${found.length} clips found · ${found.length - done} new · ${done} already imported` : '';
-    $('do-import').disabled = !n;
-    $('do-import').textContent = n ? `Import ${n} clip${n > 1 ? 's' : ''}` : 'Import selected';
+    const n = found.filter((f) => f.checked && !f.done).length;
+    const imported = found.filter((f) => f.dupOf).length;
+    const repeats = found.filter((f) => f.sameAs).length;
+    const game = importGame();
+    const btn = $('do-import');
+    if (checking) {
+      $('found-summary').textContent = `Checking ${checking} of ${found.length} files…`;
+      btn.disabled = true;
+      btn.textContent = 'Import selected';
+      return;
+    }
+    const parts = [`${plural(found.length, 'clip')} found`, `${found.length - imported - repeats} new`, `${imported} already imported`];
+    if (repeats) parts.push(plural(repeats, 'repeat'));
+    $('found-summary').textContent = found.length ? parts.join(' · ') : '';
+    btn.disabled = !n || !game;
+    btn.textContent = !n ? 'Import selected' : !game ? 'Choose a game first' : `Import ${plural(n, 'clip')}`;
   }
 
   function resetImport() {
+    scan++;
+    checking = 0;
     preview.pause();
     previewing = null;
     found.forEach((f) => f.url && URL.revokeObjectURL(f.url));
     found = [];
     $('drop').hidden = false;
-    $('picked').hidden = $('found').hidden = $('select-new').hidden = $('select-none').hidden = true;
+    $('picked').hidden = $('game-pick').hidden = $('found').hidden = $('select-new').hidden = $('select-none').hidden = true;
     $('dir').value = '';
     summary();
   }
@@ -638,24 +649,25 @@
 
   async function doImport() {
     const picked = found.filter((f) => f.checked && !f.done);
+    const game = importGame();
+    if (!picked.length || !game) return;
     const btn = $('do-import');
     btn.disabled = true;
+    let added = 0;
     try {
       for (const [i, f] of picked.entries()) {
         btn.textContent = `Importing ${i + 1} of ${picked.length}…`;
         await api('PUT', `/api/upload?audio=${encodeURIComponent(f.audio)}`, f.file, true);
-        const clip = { title: f.title, audio: f.audio };
+        const clip = { title: f.title, audio: f.audio, [GAME]: game };
         if (f.recording) clip[REC] = f.recording;
-        // A folder that already has one game passes it on to new clips.
-        const sameFolder = allClips().filter((c) => folderOf(c.audio) === folderOf(f.audio) && has(c, GAME));
-        const g = new Set(sameFolder.map((c) => first(c[GAME])));
-        if (g.size === 1) clip[GAME] = [...g][0];
         inbox.push(clip);
+        server.hashes = { ...server.hashes, [f.audio]: f.hash };
+        added++;
       }
       await api('POST', '/api/inbox', { clips: inbox });
-      toast(`Imported ${picked.length} clip${picked.length > 1 ? 's' : ''}. Pick a game for the folder and a use case for each clip.`);
+      toast(`Imported ${plural(added, 'clip')} for ${game}. Give each one a use case.`);
     } catch (err) {
-      toast(`Import stopped: ${err.message}`, true);
+      toast(`Import stopped after ${plural(added, 'clip')}: ${err.message}`, true);
       await api('POST', '/api/inbox', { clips: inbox }).catch(() => {});
     }
     $('import').close();
@@ -668,12 +680,12 @@
   function wireImport() {
     $('open-import').onclick = () => { resetImport(); $('import').showModal(); };
     $('close-import').onclick = () => { resetImport(); $('import').close(); };
-    $('import').addEventListener('close', () => preview.pause());
+    $('import').addEventListener('close', () => { scan++; preview.pause(); });
     $('pick-again').onclick = resetImport;
     $('select-new').onclick = () => { found.forEach((f) => (f.checked = !f.done)); renderFound(); };
     $('select-none').onclick = () => { found.forEach((f) => (f.checked = false)); renderFound(); };
-    // A different destination changes which clips count as already imported.
-    $('dest').addEventListener('input', () => { markDone(); found.forEach((f) => { if (!f.done) f.checked = true; }); renderFound(); });
+    $('import-game').onchange = () => { gameChanged(); if (!$('import-new-game').hidden) $('import-new-game').focus(); };
+    $('import-new-game').oninput = gameChanged;
     $('dir').onchange = () => {
       const files = [...$('dir').files];
       if (!files.length) return;
@@ -764,7 +776,6 @@
     wireSide();
     wireImport();
     wirePublish();
-    setTab('tag');
     refresh(false);
   }
 })();
