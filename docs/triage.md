@@ -54,4 +54,5 @@ Your work on unpublished clips is saved in `inbox/` as you go, so you can close 
 - Keep clip branches short-lived: two open branches that both add clips will conflict in `src/data/clips.json`.
 - If `src/data/clips.json` changed on GitHub since the page loaded, Publish stops and asks you to reload, so nobody's changes are overwritten.
 - **Remove N clips with missing audio** appears when the list has clips without an audio file, such as the sample data. They are removed on the next Publish.
+- **Preview gallery**, next to the branch name (and in the message after publishing), opens the team's page as published from this checkout, at `http://127.0.0.1:8770/gallery/`. It shows `src/` only, so clips still in the inbox are not on it.
 - If the push fails (for example, no network), the commit is kept; push the branch once it works again.

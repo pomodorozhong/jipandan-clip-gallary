@@ -305,6 +305,14 @@ def make_handler(port: int):
                     rel = path[1:]
                     site = audio_file(SITE, rel)
                     self.send_file(site if site.is_file() else audio_file(INBOX, rel))
+                elif path == "/gallery":
+                    self.send_response(HTTPStatus.MOVED_PERMANENTLY)
+                    self.send_header("Location", "/gallery/")
+                    self.end_headers()
+                elif path.startswith("/gallery/"):
+                    # The team's page as published from this checkout: src/ only, no inbox clips.
+                    rel = path[len("/gallery/"):]
+                    self.static(SITE, rel or "index.html")
                 elif path.startswith(("/assets/", "/data/")):
                     self.static(SITE, path[1:])
                 else:

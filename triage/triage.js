@@ -895,7 +895,7 @@
           inbox: { clips: inbox.filter((c) => isDropped(c) || !ready(c)) },
         });
         load(result.state);
-        toast(result.message, result.pushed === false);
+        toast(result.message, result.pushed === false, ['Preview gallery', () => window.open('/gallery/', '_blank', 'noopener')]);
       } catch (err) {
         toast(`Not published: ${err.message}`, true);
       }
