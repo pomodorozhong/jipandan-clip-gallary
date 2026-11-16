@@ -98,6 +98,16 @@
     original = new Map(pub.map((c) => [c.audio, JSON.stringify(c)]));
     removed = new Set();
     inbox = (state.inbox.clips || []).map((c) => ({ ...c }));
+    // Clips imported before "?" was escaped have it raw in their path, where the browser reads it as
+    // the start of a query and the audio is not found. Escape it; the file on disk keeps its name.
+    let fixed = false;
+    inbox.forEach((c) => {
+      if (typeof c.audio === 'string' && c.audio.startsWith('clips/') && c.audio.includes('?')) {
+        c.audio = c.audio.replace(/\?/g, '%3F');
+        fixed = true;
+      }
+    });
+    if (fixed) saveInbox();
   }
 
   // ---------- saving ----------
@@ -501,7 +511,8 @@
   let scan = 0;       // bumps on every new folder, so a stale check stops
 
   const nfc = (s) => s.normalize('NFC');
-  const urlPath = (s) => s.replace(/%/g, '%25').replace(/#/g, '%23');
+  // A file name as a URL path: %, # and ? would otherwise be read as an escape, a fragment or a query.
+  const urlPath = (s) => s.replace(/%/g, '%25').replace(/#/g, '%23').replace(/\?/g, '%3F');
   const fold = (s) => s.toLowerCase(); // macOS file names ignore case
 
   function parseName(name) {

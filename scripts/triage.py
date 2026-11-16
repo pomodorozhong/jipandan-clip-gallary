@@ -92,7 +92,7 @@ def audio_hashes() -> dict:
                 cached = (st.st_size, st.st_mtime_ns, digest(path))
                 _hash_cache[path] = cached
             rel = path.relative_to(base).as_posix()
-            out.setdefault(rel.replace("%", "%25").replace("#", "%23"), cached[2])
+            out.setdefault(rel.replace("%", "%25").replace("#", "%23").replace("?", "%3F"), cached[2])
     return out
 
 
