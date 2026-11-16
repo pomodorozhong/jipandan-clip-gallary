@@ -23,6 +23,8 @@ All clips are stored flat in `clips/` under their export file name; subfolders i
 - **Repeat:** the same audio appears twice in the export folder; only the first is imported.
 - **Saved as …-2:** a different clip already has this file name, so `-2` (or `-3`, and so on) is added before the extension.
 
+A file name with `?`, `#` or `%` is saved with the full-width look-alike instead (`？`, `＃`, `％`), because some browsers fail to play such files even when the name is escaped. The title keeps the original characters. When the triage server starts, it renames inbox files saved before this rule.
+
 Titles come from the file names. Files exported by jipandan-clip are named `<recording>_<clip id>_<title>.mp3`, so the title is the last part and the recording name goes into a `recording` dimension. Other files use their whole name as the title.
 
 ## Triaging

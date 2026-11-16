@@ -560,6 +560,9 @@
   const nfc = (s) => s.normalize('NFC');
   // A file name as a URL path: %, # and ? would otherwise be read as an escape, a fragment or a query.
   const urlPath = (s) => s.replace(/%/g, '%25').replace(/#/g, '%23').replace(/\?/g, '%3F');
+  // Some browsers fail to play a file whose name has ?, # or % even when escaped, so the stored name
+  // uses full-width look-alikes. The clip's title keeps the original characters.
+  const safeName = (s) => s.replace(/\?/g, '？').replace(/#/g, '＃').replace(/%/g, '％');
   const fold = (s) => s.toLowerCase(); // macOS file names ignore case
 
   function parseName(name) {
@@ -592,7 +595,7 @@
       f.audio = '';
       if (f.done) continue;
       firstWith.set(f.hash, f);
-      const base = nfc(f.file.name);
+      const base = safeName(nfc(f.file.name));
       let name = base;
       for (let n = 2; taken.has(fold(`clips/${urlPath(name)}`)); n++) name = withSuffix(base, n);
       f.saveAs = name;

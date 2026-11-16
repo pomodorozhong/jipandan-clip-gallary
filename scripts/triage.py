@@ -372,6 +372,43 @@ def make_handler(port: int):
     return Handler
 
 
+# Characters that have a meaning in URLs. Some browsers fail to play a file whose name has them even
+# when they are escaped, so stored file names use the full-width look-alikes instead.
+URL_SAFE = str.maketrans({"?": "？", "#": "＃", "%": "％"})
+
+
+def rename_unsafe_inbox_files() -> int:
+    """Rename inbox audio files whose names contain ?, # or %, and update their clips. Returns how many."""
+    data = read_json(INBOX_DATA, {"clips": []})
+    clips = data.get("clips") or []
+    taken = {p.relative_to(base).as_posix().lower() for base in (SITE, INBOX) if (base / "clips").is_dir()
+             for p in (base / "clips").rglob("*")}
+    renamed = 0
+    for c in clips:
+        if not is_local(c.get("audio")):
+            continue
+        try:
+            old = audio_file(INBOX, c["audio"])
+        except Refused:
+            continue
+        safe = old.name.translate(URL_SAFE)
+        if safe == old.name or not old.is_file():
+            continue
+        stem, suffix = safe.rsplit(".", 1)
+        name, n = safe, 2
+        while f"clips/{name}".lower() in taken:
+            name, n = f"{stem}-{n}.{suffix}", n + 1
+        new = old.with_name(name)
+        old.rename(new)
+        taken.add(f"clips/{name}".lower())
+        rel = new.relative_to(INBOX / "clips").as_posix()
+        c["audio"] = "clips/" + rel.replace("%", "%25").replace("#", "%23").replace("?", "%3F")
+        renamed += 1
+    if renamed:
+        write_json(INBOX_DATA, {**data, "clips": clips})
+    return renamed
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--port", type=int, default=8770)
@@ -386,6 +423,8 @@ def main() -> int:
         if not args.no_browser:
             webbrowser.open(url)
         return 0
+    if n := rename_unsafe_inbox_files():
+        print(f"Renamed {n} inbox file(s) whose names had ?, # or % in them.")
     print(f"Triage page: {url}\nClose this window or press Ctrl+C to stop.")
     if not args.no_browser:
         webbrowser.open(url)
