@@ -343,7 +343,8 @@
         : isInbox(clip.audio) ? 'Move this clip to the Dropped column; it is never published' : 'Remove this clip from the gallery on the next Publish';
       dropBtn.onclick = toggleDrop;
       $('now').replaceChildren(
-        el('div', 'now' + (isDropped(clip) ? ' is-dropped' : ''), play, el('div', 'now-text', el('b', '', clip.title), where), dropBtn),
+        el('div', 'now' + (isDropped(clip) ? ' is-dropped' : ''), play,
+          el('div', 'now-text', el('b', '', clip.title), el('div', 'now-meta', where, dropBtn))),
         ...(hasGame || isDropped(clip) ? [] : [gameMenu(clip)]));
     } else {
       const next = nextUntagged(null);
@@ -409,7 +410,8 @@
       refresh();
     };
     select.title = 'Source game (set per folder on import)';
-    return current ? el('span', 'game-inline', select) : el('label', 'now-game needs', 'Game', select);
+    // A plain label with the menu laid invisibly over it, so it is as wide as the game's name in every browser.
+    return current ? el('span', 'game-inline', el('span', '', current, ' ▾'), select) : el('label', 'now-game needs', 'Game', select);
   }
 
   function renderActions() {
