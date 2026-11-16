@@ -22,7 +22,7 @@ To import, tag and publish new clips, open the local triage page:
 npm run triage
 ```
 
-It opens in your browser at http://127.0.0.1:8770. You can also double-click `Triage.command` in Finder. See [Importing and triaging clips](docs/triage.md).
+It opens in your browser at http://127.0.0.1:8770. See [Importing and triaging clips](docs/triage.md).
 
 ## Docs
 

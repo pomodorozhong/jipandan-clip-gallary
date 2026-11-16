@@ -4,11 +4,15 @@ New clips go through a triage page that runs only on your computer. You import e
 
 ## Opening the triage page
 
-Double-click **Triage.command** in the repository folder in Finder. A Terminal window opens and the triage page opens in your browser at http://127.0.0.1:8770. Close the Terminal window to stop it. (`npm run triage` does the same from a terminal.)
+In a terminal in the repository folder, run:
+
+```bash
+npm run triage
+```
+
+The triage page opens in your browser at http://127.0.0.1:8770. Press Ctrl+C in the terminal to stop it.
 
 It needs Node.js 20 or later (the same Node the project's npm scripts use) and git. The server uses no packages, so there is nothing to install beyond those.
-
-The first time, macOS may ask whether to open the file; choose Open.
 
 ## Importing
 

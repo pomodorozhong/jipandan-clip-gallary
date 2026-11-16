@@ -3,8 +3,8 @@
 // Usage:
 //     node scripts/triage.mjs [--port 8770] [--no-browser]
 //
-// Or `npm run triage`, or double-click Triage.command in Finder. The page opens in your browser;
-// close the terminal window (or press Ctrl+C) to stop it.
+// Or `npm run triage`. The page opens in your browser; press Ctrl+C (or close the terminal window)
+// to stop it.
 //
 // Imported clips wait in inbox/ (ignored by git, so they stay on this computer) until they have a
 // source game and a use case. Publish then moves them into src/clips/ and src/data/clips.json,
