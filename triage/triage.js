@@ -15,6 +15,7 @@
   const AUDIO = /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|webm)$/i;
   const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5v17l15-8.5z"/></svg>';
   const ICON_STOP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"/></svg>';
+  const ICON_BRANCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10c0 4-6 3-12 7"/></svg>';
 
   const $ = (id) => document.getElementById(id);
   const board = () => window.clipBoard;
@@ -154,9 +155,7 @@
     const lastSeen = new Map([...document.querySelectorAll('.chip')].map((el) => [el.dataset.audio, rect(el)]));
 
     board().update({ dimensions: boardDims(), clips: allClips() });
-    renderFolders();
-    renderTagbar();
-    renderActions();
+    renderSide();
     if (!animate || reduceMotion.matches) return;
 
     const ease = 'cubic-bezier(.2,.8,.2,1)';
@@ -199,7 +198,45 @@
     });
   }
 
-  function renderFolders() {
+  // ---------- sidebar ----------
+
+  const KEY_SLOTS = 9;  // use cases on the number keys
+  const PILL_CAP = 15;  // pills shown before "Show all"
+  let tab = 'tag';
+  let folderMode = null; // 'needs' or 'all'; null picks one from the data
+  let showAllUses = false;
+  let keyed = [];        // use cases on keys 1–9, in key order
+
+  // Small DOM helper: el('b', 'cls', 'text', child, ...)
+  function el(tagName, cls, ...kids) {
+    const node = document.createElement(tagName);
+    if (cls) node.className = cls;
+    kids.forEach((k) => k != null && node.append(k));
+    return node;
+  }
+  const button = (cls, ...kids) => { const b = el('button', cls, ...kids); b.type = 'button'; return b; };
+  const kbd = (text) => el('kbd', '', text);
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+  const usesOf = (c) => [].concat(c[USE] ?? []).map(String);
+  const useCount = (u) => allClips().filter((c) => usesOf(c).includes(u)).length;
+
+  // The most-used use cases get keys 1–9 when the page opens, so keys don't move while you tag.
+  function pinKeys() {
+    keyed = useCases().map((u, i) => [u, useCount(u), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).slice(0, KEY_SLOTS).map(([u]) => u);
+  }
+  // Use cases created later fill free key slots; ones that no longer exist give theirs up.
+  function keyedUses() {
+    const all = useCases();
+    keyed = keyed.filter((u) => all.includes(u));
+    for (const u of all) {
+      if (keyed.length >= KEY_SLOTS) break;
+      if (!keyed.includes(u)) keyed.push(u);
+    }
+    return keyed;
+  }
+
+  function folderGroups() {
     const groups = new Map();
     allClips().forEach((c) => {
       if (!c.audio || !c.audio.startsWith('clips/')) return;
@@ -207,76 +244,153 @@
       if (!groups.has(f)) groups.set(f, []);
       groups.get(f).push(c);
     });
-    const known = games();
-    const cards = [...groups].map(([folder, list]) => {
+    return [...groups].map(([folder, list]) => {
       const values = new Set(list.map((c) => first(c[GAME])));
-      const game = values.size === 1 ? [...values][0] : '';
-      const el = document.createElement('div');
-      el.className = 'folder' + (game ? '' : ' needs');
-      const name = document.createElement('code');
-      name.textContent = folder;
-      const count = document.createElement('span');
-      count.className = 'count';
-      const waiting = list.filter((c) => isInbox(c.audio)).length;
-      count.textContent = `${list.length} clips` + (waiting ? ` · ${waiting} not published` : '');
-      const select = document.createElement('select');
-      const opts = [['', values.size > 1 ? 'Mixed games' : 'Choose game…'], ...known.map((g) => [g, g]), ['+', '+ New game…']];
-      select.replaceChildren(...opts.map(([v, label]) => new Option(label, v)));
-      select.value = game;
-      select.onchange = () => {
-        let value = select.value;
-        if (value === '+') value = (prompt('Name of the new game') || '').trim();
-        if (!value) { select.value = game; return; }
-        list.forEach((c) => { clipOf(c.audio)[GAME] = value; });
-        saveInbox();
-        refresh();
-      };
-      el.append(name, count, select);
-      return el;
+      return { folder, list, game: values.size === 1 ? [...values][0] : '', mixed: values.size > 1 };
     });
-    $('folders').replaceChildren(...cards);
-    $('folders-section').hidden = !cards.length;
   }
 
-  function renderTagbar() {
-    const clip = selected && clipOf(selected);
-    const bar = $('tagbar');
-    const now = document.createElement('div');
-    now.className = 'now';
-    if (clip) {
-      now.textContent = `▶ ${clip.title} `;
-      const where = document.createElement('small');
-      where.textContent = folderOf(clip.audio) + (isInbox(clip.audio) ? ' · not published' : '');
-      now.append(where);
-    } else {
-      now.innerHTML = '<small>Click a chip to play it and tag it</small>';
+  function setTab(name) {
+    tab = name;
+    for (const t of ['tag', 'folders']) {
+      $(`tab-${t}`).classList.toggle('on', t === name);
+      $(`tab-${t}`).setAttribute('aria-selected', String(t === name));
+      $(`panel-${t}`).hidden = t !== name;
     }
-    const buttons = useCases().map((u, i) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'tag' + (clip && [].concat(clip[USE] ?? []).includes(u) ? ' on' : '');
-      b.disabled = !clip;
-      b.innerHTML = i < 9 ? `<kbd>${i + 1}</kbd>` : '';
-      b.append(u);
+  }
+
+  function renderSide() {
+    renderTagPanel();
+    renderFolders();
+    renderActions();
+  }
+
+  function renderTagPanel() {
+    const clip = selected && clipOf(selected);
+    const needGame = folderGroups().filter((g) => !g.game).length;
+
+    // Progress over the clips waiting in the inbox.
+    const total = inbox.length;
+    const done = inbox.filter((c) => has(c, USE)).length;
+    const progress = $('progress');
+    if (total) {
+      const bar = el('div', 'bar', el('i'));
+      bar.firstChild.style.width = `${(done / total) * 100}%`;
+      progress.replaceChildren(el('span', '', el('b', '', `${done} of ${total}`), ' new clips have a use case'), bar);
+    } else {
+      progress.replaceChildren(el('span', '', 'No new clips waiting. Use ', el('b', '', '+ Import'), ' to add some.'));
+    }
+    if (needGame) {
+      const link = button('more', `${plural(needGame, 'folder')} still need${needGame === 1 ? 's' : ''} a game →`);
+      link.onclick = () => setTab('folders');
+      progress.append(link);
+    }
+
+    // The selected clip, or a way to get to the next one.
+    if (clip) {
+      const play = button('play');
+      play.innerHTML = ICON_PLAY;
+      play.title = 'Play or stop (Space)';
+      play.onclick = () => board().toggle(clip.audio);
+      const game = first(clip[GAME]);
+      const where = el('small', '', folderOf(clip.audio), ' · ', game || 'no game yet', isInbox(clip.audio) ? ' · not published' : '');
+      $('now').replaceChildren(el('div', 'now', play, el('div', 'now-text', el('b', '', clip.title), where)));
+    } else {
+      const next = nextUntagged(null);
+      const card = el('div', 'now empty', el('b', '', 'No clip selected'));
+      if (next) {
+        const go = button('btn primary small', 'Next untagged ', kbd('N'));
+        go.onclick = goNext;
+        card.append(el('span', '', 'Click a chip on the board, or jump to the next clip without a use case.'), go);
+      } else {
+        card.append(el('span', '', 'Every clip has a use case. Click a chip to change one.'));
+      }
+      $('now').replaceChildren(card);
+    }
+
+    // Use cases: only shown with a clip selected, so nothing sits there disabled.
+    $('use-block').hidden = !clip;
+    if (!clip) return;
+    const all = useCases();
+    const keys = keyedUses();
+    const rest = all.filter((u) => !keys.includes(u)).sort((a, b) => useCount(b) - useCount(a) || a.localeCompare(b));
+    const ordered = [...keys, ...rest];
+    const raw = $('use-filter').value.trim();
+    const q = raw.toLowerCase();
+    let shown = q ? ordered.filter((u) => u.toLowerCase().includes(q)) : ordered;
+    const capped = !q && !showAllUses && shown.length > PILL_CAP;
+    if (capped) shown = shown.slice(0, PILL_CAP);
+    const mine = usesOf(clip);
+    const pills = shown.map((u) => {
+      const at = keys.indexOf(u);
+      const b = button('tag' + (mine.includes(u) ? ' on' : '') + (at < 0 ? ' nokey' : ''), at < 0 ? null : kbd(String(at + 1)), u);
+      b.title = `${plural(useCount(u), 'clip')}`;
       b.onclick = () => tag(u);
       return b;
     });
-    const add = document.createElement('button');
-    add.type = 'button';
-    add.className = 'tag new';
-    add.textContent = '+ New use case';
-    add.disabled = !clip;
-    add.onclick = () => { const u = (prompt('New use case') || '').trim(); if (u) tag(u); };
-    const clear = document.createElement('button');
-    clear.type = 'button';
-    clear.className = 'btn quiet';
-    clear.innerHTML = 'Untag&nbsp;<kbd>0</kbd>';
-    clear.disabled = !clip;
-    clear.onclick = () => tag('');
-    const keys = document.createElement('div');
-    keys.className = 'keys';
-    keys.innerHTML = '<kbd>Space</kbd> play or stop · <kbd>←</kbd> <kbd>→</kbd> previous or next clip · <kbd>1</kbd>–<kbd>9</kbd> tag, then play the next untagged clip · <kbd>0</kbd> untag';
-    bar.replaceChildren(now, ...buttons, add, clear, keys);
+    if (q && !all.some((u) => u.toLowerCase() === q)) {
+      const create = button('tag new', `+ Create “${raw}”`);
+      create.onclick = () => tag(raw);
+      pills.push(create);
+    }
+    if (!pills.length) pills.push(el('span', 'hint', 'No use cases yet. Type a name above to create one.'));
+    $('uses').replaceChildren(...pills);
+    $('use-total').textContent = all.length ? `${all.length} total` : '';
+    const more = $('more-uses');
+    more.hidden = q || ordered.length <= PILL_CAP;
+    more.textContent = showAllUses ? 'Show fewer' : `Show all ${ordered.length}`;
+    $('untag').hidden = !mine.length;
+  }
+
+  function renderFolders() {
+    const groups = folderGroups();
+    const needs = groups.filter((g) => !g.game);
+    const badge = $('folders-count');
+    badge.hidden = !needs.length;
+    badge.textContent = needs.length;
+
+    const mode = folderMode || (needs.length ? 'needs' : 'all');
+    $('mode-needs').textContent = `Needs a game (${needs.length})`;
+    $('mode-all').textContent = `All (${groups.length})`;
+    $('mode-needs').classList.toggle('on', mode === 'needs');
+    $('mode-all').classList.toggle('on', mode === 'all');
+
+    const q = $('folder-filter').value.trim().toLowerCase();
+    const list = (mode === 'needs' ? needs : groups).filter((g) => g.folder.toLowerCase().includes(q));
+    const known = games();
+    const byGame = new Map();
+    list.forEach((g) => {
+      const key = g.game || '';
+      if (!byGame.has(key)) byGame.set(key, []);
+      byGame.get(key).push(g);
+    });
+    const sections = [...byGame].sort(([a], [b]) => (a ? 1 : 0) - (b ? 1 : 0) || a.localeCompare(b)).map(([game, items]) => {
+      const rows = items.map(({ folder, list: clips, game: current, mixed }) => {
+        const waiting = clips.filter((c) => isInbox(c.audio)).length;
+        const select = document.createElement('select');
+        const opts = [['', mixed ? 'Mixed games' : 'Pick a game…'], ...known.map((g) => [g, g]), ['+', '+ New game…']];
+        select.replaceChildren(...opts.map(([v, label]) => new Option(label, v)));
+        select.value = current;
+        select.setAttribute('aria-label', `Game for ${folder}`);
+        select.onchange = () => {
+          let value = select.value;
+          if (value === '+') value = (prompt('Name of the new game') || '').trim();
+          if (!value) { select.value = current; return; }
+          clips.forEach((c) => { clipOf(c.audio)[GAME] = value; });
+          saveInbox();
+          refresh();
+        };
+        const count = el('span', 'n', plural(clips.length, 'clip') + (waiting ? ` · ${waiting} new` : ''));
+        return el('div', 'fold' + (current ? '' : ' needs'), el('div', 'line', el('code', '', folder), count), select);
+      });
+      return el('div', 'fold-group', el('h3', 'side-label', game || 'No game yet'), ...rows);
+    });
+    if (!sections.length) {
+      const text = !groups.length ? 'No clip folders yet. Import some clips first.'
+        : q ? 'No folders match.' : 'Every folder has a game.';
+      sections.push(el('p', 'hint center', text));
+    }
+    $('folders').replaceChildren(...sections);
   }
 
   function renderActions() {
@@ -284,34 +398,53 @@
     const n = p.add.length + p.edit.length + p.drop.length;
     const btn = $('publish');
     btn.disabled = !n || !server.canPublish;
-    btn.textContent = n ? `Publish ${n} change${n > 1 ? 's' : ''}` : 'Nothing to publish';
+    btn.replaceChildren(n ? 'Publish ' : 'Nothing to publish');
+    if (n) btn.append(plural(n, 'change'));
     btn.title = server.canPublish ? '' : 'Publishing needs a branch checked out.';
 
     const missing = live().filter((c) => server.missing.includes(c.audio));
     const rm = $('remove-missing');
     rm.hidden = !missing.length;
-    rm.textContent = `Remove ${missing.length} clip${missing.length > 1 ? 's' : ''} with missing audio`;
+    rm.textContent = `Remove ${plural(missing.length, 'clip')} with missing audio`;
 
-    const notice = $('notice');
-    const waiting = inbox.filter((c) => !ready(c)).length;
-    const parts = [];
-    if (!server.canPublish) parts.push('This checkout is not on a branch. You can import and tag, but Publish needs a branch checked out.');
+    $('branch').innerHTML = ICON_BRANCH;
+    $('branch').append(server.branch || 'no branch');
+    $('branch').title = 'Publish commits to this branch';
+    const note = $('publish-note');
+    if (!server.canPublish) note.replaceChildren('This checkout is not on a branch. You can import and tag, but Publish needs a branch checked out.');
     else if (onBranch()) {
-      parts.push(`Publish commits to “${server.branch}” and pushes it. The clips go live once it is merged into ${server.liveBranch}.`);
+      note.replaceChildren(`Goes live once ${server.branch} is merged into ${server.liveBranch}.`);
       if (server.compareUrl) {
-        const link = document.createElement('a');
+        const link = el('a', '', 'Open a pull request');
         link.href = server.compareUrl;
         link.target = '_blank';
         link.rel = 'noopener';
-        link.textContent = 'Open a pull request';
-        parts.push(link, '.');
+        note.append(' ', link);
       }
-    }
-    if (waiting) parts.push(waiting > 1
-      ? `${waiting} imported clips still need a game or a use case; they stay on this computer until then.`
-      : '1 imported clip still needs a game or a use case; it stays on this computer until then.');
-    notice.replaceChildren(...parts.flatMap((part, i) => (i && part !== '.' ? [' ', part] : [part])));
-    notice.hidden = !parts.length;
+    } else note.replaceChildren('Goes live on the team’s page about a minute after publishing.');
+  }
+
+  function wireSide() {
+    $('tab-tag').onclick = () => setTab('tag');
+    $('tab-folders').onclick = () => setTab('folders');
+    $('mode-needs').onclick = () => { folderMode = 'needs'; renderFolders(); };
+    $('mode-all').onclick = () => { folderMode = 'all'; renderFolders(); };
+    $('folder-filter').oninput = renderFolders;
+    $('more-uses').onclick = () => { showAllUses = !showAllUses; renderTagPanel(); };
+    $('untag').onclick = () => tag('');
+    const filter = $('use-filter');
+    filter.oninput = renderTagPanel;
+    filter.onkeydown = (e) => {
+      if (e.key === 'Escape') { filter.value = ''; filter.blur(); renderTagPanel(); e.preventDefault(); return; }
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const raw = filter.value.trim();
+      if (!raw) return;
+      // Enter picks the exact or first matching use case, or creates the typed one when nothing matches.
+      const q = raw.toLowerCase();
+      const all = useCases();
+      tag(all.find((u) => u.toLowerCase() === q) || all.find((u) => u.toLowerCase().includes(q)) || raw);
+    };
   }
 
   // ---------- tagging ----------
@@ -320,23 +453,41 @@
     return [...document.querySelectorAll('.chip')].map((el) => el.dataset.audio);
   }
 
+  // The next clip without a use case, in board order after `from` (or from the start).
+  function nextUntagged(from) {
+    const order = chipsInOrder();
+    const at = order.indexOf(from);
+    const rest = order.slice(at + 1).concat(order.slice(0, Math.max(at, 0)));
+    return rest.find((a) => a !== from && !has(clipOf(a) || {}, USE)) || null;
+  }
+
+  function play(audio) {
+    if (audio && board().playingAudio() !== audio) board().toggle(audio);
+  }
+
   function tag(useCase) {
     const clip = selected && clipOf(selected);
     if (!clip) return;
     if (useCase) clip[USE] = useCase;
     else delete clip[USE];
     if (isInbox(clip.audio)) saveInbox();
+    $('use-filter').value = '';
+    if (document.activeElement === $('use-filter')) $('use-filter').blur(); // so the number keys work again
     // Move on to the next untagged clip, in board order after this one, and play it.
-    let next = null;
-    if (useCase) {
-      const order = chipsInOrder();
-      const at = order.indexOf(clip.audio);
-      const rest = order.slice(at + 1).concat(order.slice(0, Math.max(at, 0)));
-      next = rest.find((a) => a !== clip.audio && !has(clipOf(a) || {}, USE)) || null;
-    }
+    const next = useCase ? nextUntagged(clip.audio) : null;
     if (next) selected = next;
     refresh();
-    if (next && board().playingAudio() !== next) board().toggle(next);
+    play(next);
+  }
+
+  function goNext() {
+    const next = nextUntagged(selected);
+    if (!next) { toast('Every clip has a use case.'); return; }
+    selected = next;
+    setTab('tag');
+    refresh(false);
+    document.querySelector('.chip.selected')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    play(next);
   }
 
   function step(delta) {
@@ -352,9 +503,12 @@
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.target.closest && e.target.closest('input, select, textarea, dialog')) return;
     if (document.querySelector('dialog[open]')) return;
-    const cases = useCases();
+    const cases = keyedUses();
     if (/^[1-9]$/.test(e.key) && cases[e.key - 1]) tag(cases[e.key - 1]);
     else if (e.key === '0') tag('');
+    else if (e.key === 'n' || e.key === 'N') goNext();
+    else if (e.key === '/' && selected) { setTab('tag'); $('use-filter').focus(); }
+    else if (e.key === 'Escape' && selected) { selected = null; refresh(false); }
     else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') step(1);
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') step(-1);
     else if (e.key === ' ' && selected) board().toggle(selected);
@@ -606,8 +760,11 @@
   function afterStart() {
     const firstUntagged = inbox.find((c) => !has(c, USE));
     selected = firstUntagged ? firstUntagged.audio : null;
+    pinKeys();
+    wireSide();
     wireImport();
     wirePublish();
+    setTab('tag');
     refresh(false);
   }
 })();

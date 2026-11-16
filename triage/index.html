@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Triage · Jipandan Voice Box</title>
+  <title>Clip triage · Jipandan Voice Box</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <!-- The viewer's own styles and board script, plus the triage additions. Served by scripts/triage.py. -->
@@ -13,40 +13,77 @@
   <script src="/assets/app.js" defer></script>
 </head>
 <body>
-  <div class="page">
-    <p class="notice" id="notice" hidden></p>
+  <div class="shell">
+    <!-- Sidebar: the triage work. Tag clips and Folders tabs, Publish always in view at the bottom. -->
+    <aside class="side">
+      <div class="side-top">
+        <h1>Clip triage</h1>
+        <button class="btn small" id="open-import">+ Import</button>
+      </div>
 
-    <header class="toolbar">
-      <span class="badge">Triage</span>
-      <span class="spacer"></span>
-      <label class="pill">Columns <select id="columns-by"></select></label>
-      <label class="pill">Colour by <select id="colour-by"></select></label>
-      <label class="pill">Sort <select id="sort-by"></select></label>
-      <label class="pill search">Search <input id="search" type="search" placeholder="clip title"></label>
-      <button class="btn quiet" id="remove-missing" hidden></button>
-      <button class="btn" id="open-import">Import clips</button>
-      <button class="btn primary" id="publish" disabled>Nothing to publish</button>
-    </header>
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tab-tag" aria-controls="panel-tag">Tag clips</button>
+        <button type="button" role="tab" id="tab-folders" aria-controls="panel-folders">Folders <span class="badge-count" id="folders-count" hidden></span></button>
+      </div>
 
-    <section id="folders-section" hidden>
-      <h3 class="section-title">Folders <small>Each imported folder gets one source game.</small></h3>
-      <div class="folders" id="folders"></div>
-    </section>
+      <div class="side-body">
+        <section class="panel" id="panel-tag" role="tabpanel" aria-labelledby="tab-tag">
+          <div class="progress" id="progress"></div>
+          <div>
+            <h3 class="side-label">Selected clip</h3>
+            <div id="now"></div>
+          </div>
+          <div id="use-block">
+            <h3 class="side-label">Use case <span class="side-label-note" id="use-total"></span></h3>
+            <label class="find"><span aria-hidden="true">⌕</span><input id="use-filter" type="text" placeholder="Filter or create…" autocomplete="off" spellcheck="false"><kbd>/</kbd></label>
+            <div class="uses" id="uses"></div>
+            <button type="button" class="more" id="more-uses" hidden></button>
+            <button type="button" class="btn quiet small" id="untag">Untag <kbd>0</kbd></button>
+          </div>
+          <p class="keys"><kbd>Space</kbd> play or stop · <kbd>←</kbd> <kbd>→</kbd> previous or next clip · <kbd>1</kbd>–<kbd>9</kbd> tag and move to the next untagged clip · <kbd>N</kbd> next untagged · <kbd>Esc</kbd> deselect</p>
+        </section>
 
-    <div class="tagbar" id="tagbar"></div>
+        <section class="panel" id="panel-folders" role="tabpanel" aria-labelledby="tab-folders" hidden>
+          <p class="hint">Each imported folder gets one source game, and every clip in it uses that game.</p>
+          <div class="seg" id="folder-mode">
+            <button type="button" data-mode="needs" id="mode-needs">Needs a game</button>
+            <button type="button" data-mode="all" id="mode-all">All</button>
+          </div>
+          <label class="find"><span aria-hidden="true">⌕</span><input id="folder-filter" type="text" placeholder="Filter folders" autocomplete="off" spellcheck="false"></label>
+          <div id="folders"></div>
+        </section>
+      </div>
 
-    <div class="filters" id="filters" aria-label="Filters"></div>
+      <div class="side-foot">
+        <span class="branch" id="branch"></span>
+        <button class="btn quiet small" id="remove-missing" hidden></button>
+        <button class="btn primary" id="publish" disabled>Nothing to publish</button>
+        <p class="foot-note" id="publish-note"></p>
+      </div>
+    </aside>
 
-    <div class="legend-row">
-      <div class="legend" id="legend"></div>
-      <span class="total" id="total" aria-live="polite"></span>
+    <!-- The viewer's board (src/assets/app.js fills these in). -->
+    <div class="main">
+      <header class="toolbar">
+        <label class="pill">Columns <select id="columns-by"></select></label>
+        <label class="pill">Colour by <select id="colour-by"></select></label>
+        <label class="pill">Sort <select id="sort-by"></select></label>
+        <label class="pill search">Search <input id="search" type="search" placeholder="clip title"></label>
+      </header>
+
+      <div class="filters" id="filters" aria-label="Filters"></div>
+
+      <div class="legend-row">
+        <div class="legend" id="legend"></div>
+        <span class="total" id="total" aria-live="polite"></span>
+      </div>
+
+      <p class="message" id="message" hidden></p>
+
+      <main class="board-scroll">
+        <div class="board" id="board"></div>
+      </main>
     </div>
-
-    <p class="message" id="message" hidden></p>
-
-    <main class="board-scroll">
-      <div class="board" id="board"></div>
-    </main>
   </div>
 
   <dialog class="sheet" id="import">

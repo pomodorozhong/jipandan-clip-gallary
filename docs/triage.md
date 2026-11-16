@@ -12,7 +12,7 @@ The first time, macOS may ask whether to open the file; choose Open.
 
 ## Importing
 
-1. Click **Import clips**, then **Choose folder…** or drop an export folder onto the box.
+1. Click **+ Import** at the top of the sidebar, then **Choose folder…** or drop an export folder onto the box.
 2. Every audio file in the folder and its subfolders is listed with its title, recording and file name. Play any of them to check. New clips are ticked; clips already in the gallery are greyed out.
 3. **Copy into clips/** sets the folder the clips go into (for example `clips/0526-session/`). Keep one folder per game, since games are set per folder.
 4. Click **Import**. The clips are copied into `inbox/` in the repository, which git ignores, and appear in the **Untagged** column.
@@ -21,9 +21,15 @@ Titles come from the file names. Files exported by jipandan-clip are named `<rec
 
 ## Triaging
 
-- **Game per folder:** the **Folders** panel lists each clip folder. Pick its game (or **New game…**) and every clip in it gets that `source-game`. Clips imported later into the same folder get it automatically.
-- **Use case per clip:** click a chip to play and select it, then click a use-case button or press its number. The clip moves into that column and the next untagged clip starts playing. **+ New use case** adds one; **Untag** (or 0) clears it.
-- Keys: Space plays or stops the selected clip, the arrow keys move between clips, 1–9 tag, 0 untags.
+The page has a sidebar for the triage work and the board on the right. The sidebar has two tabs, and **Publish** stays at its bottom.
+
+- **Tag clips tab:** shows how many new clips have a use case, and the selected clip.
+  - Click a chip to play and select it, or press **N** (or **Next untagged**) to jump to the next clip without a use case.
+  - Click a use case, or press its number. The clip moves into that column and the next untagged clip starts playing. **Untag** (or 0) clears it.
+  - Keys 1–9 go to the most-used use cases when the page opens, and stay put while you work. New use cases take any free key.
+  - With many use cases, only the first 15 show; **Show all** lists the rest. Type in **Filter or create…** (or press **/**) to narrow them. Enter picks the first match, or creates the typed use case when nothing matches.
+- **Folders tab:** each clip folder gets one game. Pick it (or **New game…**) and every clip in the folder gets that `source-game`; clips imported later into the same folder get it automatically. The tab shows a red count while folders still need a game, and lists only those by default. **All** shows every folder, grouped by game, and the filter box finds one by name.
+- Keys: Space plays or stops the selected clip, the arrow keys move between clips, 1–9 tag, 0 untags, N jumps to the next untagged clip, / filters use cases, Esc deselects.
 - Published clips are on the board too, so you can change their tags. A small orange dot marks a clip that is not published or has unpublished changes.
 
 Your work on unpublished clips is saved in `inbox/` as you go, so you can close the page and continue later. Changes to clips that are already published live only in the open page until you publish them.
@@ -33,7 +39,7 @@ Your work on unpublished clips is saved in `inbox/` as you go, so you can close 
 **Publish** sends every clip that has both a game and a use case to GitHub: it moves their audio into `src/clips/`, adds them to `src/data/clips.json`, commits only those two paths on the branch you have checked out, and pushes that branch. Clips still missing a game or a use case stay in `inbox/`, on your computer only.
 
 - **On `main`**, the site updates about a minute later.
-- **On another branch**, the clips go live once that branch is merged into `main`. The notice at the top of the page links to GitHub to open a pull request, so someone can review the clips first.
+- **On another branch**, the clips go live once that branch is merged into `main`. **Open a pull request**, under the Publish button, opens one on GitHub so someone can review the clips first.
 
 - Publishing needs a branch checked out. In a detached checkout you can still import and tag.
 - Keep clip branches short-lived: two open branches that both add clips will conflict in `src/data/clips.json`.
