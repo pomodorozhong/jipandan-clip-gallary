@@ -10,7 +10,7 @@
   const GAME = 'source-game';
   const USE = 'use-case';
   const REC = 'recording';
-  const DROPPED = 'Dropped';      // the board column for dropped clips
+  let dropLabel = 'Dropped';      // the board column for dropped clips; see boardClips()
   const FROM = 'import-folder'; // the export folder a clip came from; kept in the inbox only, dropped on publish
   // jipandan-clip export names: <recording>_<4+ digit clip id, maybe "-N">_<title>, maybe " (N)".
   const EXPORT_NAME = /^(.+)_(\d{4,}(?:-\d+)?)_(.+?)(?: \(\d+\))?$/;
@@ -104,17 +104,7 @@
     pub = (state.published.clips || []).map((c) => ({ ...c }));
     original = new Map(pub.map((c) => [c.audio, JSON.stringify(c)]));
     removed = new Set();
-    inbox = (state.inbox.clips || []).map((c) => ({ ...c }));
-    // Clips imported before "?" was escaped have it raw in their path, where the browser reads it as
-    // the start of a query and the audio is not found. Escape it; the file on disk keeps its name.
-    let fixed = false;
-    inbox.forEach((c) => {
-      if (typeof c.audio === 'string' && c.audio.startsWith('clips/') && c.audio.includes('?')) {
-        c.audio = c.audio.replace(/\?/g, '%3F');
-        fixed = true;
-      }
-    });
-    if (fixed) saveInbox();
+    inbox = (state.inbox.clips || []).map((c) => ({ ...c })); // the server renamed any ?, # or % file names at start-up
   }
 
   // ---------- saving ----------
@@ -160,12 +150,12 @@
     },
     orderColumns(values, key) {
       const none = board().NONE;
-      let out = values.filter((v) => v !== DROPPED);
+      let out = values.filter((v) => v !== dropLabel);
       if ((key === USE || key === GAME) && out.includes(none)) out = [none, ...out.filter((v) => v !== none)];
-      return values.includes(DROPPED) ? [...out, DROPPED] : out;
+      return values.includes(dropLabel) ? [...out, dropLabel] : out;
     },
     decorateColumn(section, value, key) {
-      if (value === DROPPED) { section.classList.add('dropped-col'); return; }
+      if (value === dropLabel) { section.classList.add('dropped-col'); return; }
       if (value !== board().NONE || (key !== USE && key !== GAME)) return;
       section.classList.add('untagged');
       section.querySelector('h2').firstChild.textContent = (key === USE ? 'Untagged' : 'No game yet') + ' ';
@@ -173,10 +163,14 @@
   };
 
   // What the board shows: a dropped clip has "Dropped" for every dimension, so it lands in the
-  // Dropped column whatever the columns are split by. Its real tags stay on the clip.
+  // Dropped column whatever the columns are split by. Its real tags stay on the clip. If a real tag is
+  // already called "Dropped", the column gets a name no clip uses, so live clips never land in it.
   function boardClips() {
     const keys = boardDims().map((d) => d.key);
-    return allClips().map((c) => (isDropped(c) ? { ...c, ...Object.fromEntries(keys.map((k) => [k, DROPPED])) } : c));
+    const used = new Set(allClips().filter((c) => !isDropped(c)).flatMap((c) => keys.flatMap((k) => [].concat(c[k] ?? []).map(String))));
+    dropLabel = 'Dropped';
+    for (let n = 2; used.has(dropLabel); n++) dropLabel = `Dropped (${n})`;
+    return allClips().map((c) => (isDropped(c) ? { ...c, ...Object.fromEntries(keys.map((k) => [k, dropLabel])) } : c));
   }
 
   // ---------- drawing ----------
@@ -509,10 +503,14 @@
     refresh();
     play(next);
     if (dropping) {
+      const { audio } = clip;
       toast(`Dropped “${clip.title}”.`, false, ['Undo', () => {
-        delete clip.dropped;
-        if (isInbox(clip.audio)) saveInbox();
-        selected = clip.audio;
+        // Look the clip up again: a publish since then reloads every clip from the server.
+        const now = clipOf(audio);
+        if (!now) { toast(`Too late to undo: “${clip.title}” was already removed by Publish.`, true); return; }
+        delete now.dropped;
+        if (isInbox(audio)) saveInbox();
+        selected = audio;
         refresh();
       }]);
     }
