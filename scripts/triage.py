@@ -39,6 +39,7 @@ INBOX_DATA = INBOX / "clips.json"
 LIVE_BRANCH = "main"                     # the branch GitHub Pages publishes
 AUDIO_SUFFIXES = {".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".wav", ".flac", ".webm"}
 MAX_UPLOAD = 200 * 1024 * 1024
+IMPORT_FOLDER = "import-folder"          # inbox-only field: the export folder a clip came from
 
 mimetypes.add_type("audio/mp4", ".m4a")
 mimetypes.add_type("audio/ogg", ".opus")
@@ -170,6 +171,8 @@ def publish(body: dict) -> dict:
 
     published = body.get("published") or {}
     clips = [clean_clip(c) for c in published.get("clips", [])]
+    for c in clips:
+        c.pop(IMPORT_FOLDER, None)  # where a clip was imported from only matters while it waits in the inbox
     inbox_clips = [clean_clip(c) for c in (body.get("inbox") or {}).get("clips", [])]
     seen = set()
     for c in clips + inbox_clips:

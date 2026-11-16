@@ -103,12 +103,20 @@ dialog.sheet::backdrop { background: rgba(29, 31, 58, .35); }
 .drop strong { color: var(--ink); font-size: 15px; }
 .picked { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .linkish { padding: 0; border: 0; background: none; color: var(--link); font: 600 13px Inter, sans-serif; cursor: pointer; }
-.game-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; background: var(--surface); }
-.game-pick label { font-weight: 600; }
-.game-pick select, .game-pick input { height: 36px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--bg); font: 500 14px Inter, sans-serif; color: var(--ink); }
-.game-pick input { width: 200px; max-width: 100%; }
-.game-pick .hint { flex-basis: 100%; }
-.game-pick.missing { box-shadow: inset 0 0 0 2px var(--accent); }
+.steps { margin: -6px 0 0; color: var(--muted); font-size: 12px; font-weight: 600; }
+.steps b { color: var(--link); }
+.found .group { display: block; padding: 10px 8px 4px; background: none !important; color: var(--muted); font: 600 12px ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
+.found .group:first-child { padding-top: 4px; }
+.set-all { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.games { display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; padding: 6px; border-radius: 16px; background: var(--surface); }
+.games .gf { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px; border-radius: 10px; }
+.games .gf:nth-child(odd) { background: var(--bg); }
+.games .gf .name { flex: 1 1 220px; min-width: 0; }
+.games .gf code { display: block; font: 600 13px ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
+.games .gf small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.games select, .set-all select { max-width: 100%; height: 34px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--bg); font: 500 14px Inter, sans-serif; color: var(--ink); }
+.games .gf:nth-child(odd) select { background: var(--surface); }
+.games .gf.needs select { color: var(--accent); font-weight: 600; outline: 2px dashed var(--accent); outline-offset: -2px; }
 .found { flex: 1; min-height: 0; margin: 0; padding: 6px; list-style: none; overflow-y: auto; border-radius: 16px; background: var(--surface); }
 .found li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; }
 .found li:nth-child(odd) { background: var(--bg); }

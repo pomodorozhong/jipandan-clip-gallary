@@ -1,4 +1,4 @@
-// Triage page: import exported clips with a game, give each clip a use case, then publish.
+// Triage page: import exported clips, give each source folder a game and each clip a use case, then publish.
 //
 // The board itself is the viewer's src/assets/app.js. This script loads before it, sets
 // `window.clipBoardHooks`, and redraws the board through `window.clipBoard` after each change.
@@ -10,6 +10,7 @@
   const GAME = 'source-game';
   const USE = 'use-case';
   const REC = 'recording';
+  const FROM = 'import-folder'; // the export folder a clip came from; kept in the inbox only, dropped on publish
   // jipandan-clip export names: <recording>_<4+ digit clip id, maybe "-N">_<title>, maybe " (N)".
   const EXPORT_NAME = /^(.+)_(\d{4,}(?:-\d+)?)_(.+?)(?: \(\d+\))?$/;
   const AUDIO = /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|webm)$/i;
@@ -510,12 +511,13 @@
     const audio = files.filter((f) => AUDIO.test(f.file.name) && !f.file.name.startsWith('.'));
     if (!audio.length) { toast('No audio files in that folder.', true); return; }
     const id = ++scan;
-    found = audio.map((f) => ({ ...f, ...parseName(f.file.name), checked: false, done: false }))
-      .sort((a, b) => a.rel.localeCompare(b.rel));
+    // Group by source folder: the export folder itself first, then its subfolders A–Z.
+    const dirOf = (rel) => rel.slice(0, rel.lastIndexOf('/') + 1);
+    found = audio.map((f) => ({ ...f, ...parseName(f.file.name), folder: nfc(`${folderName}/${dirOf(f.rel)}`), checked: false, done: false }))
+      .sort((a, b) => (dirOf(a.rel) ? 1 : 0) - (dirOf(b.rel) ? 1 : 0) || a.folder.localeCompare(b.folder) || a.rel.localeCompare(b.rel));
     $('drop').hidden = true;
-    $('picked').hidden = $('game-pick').hidden = $('found').hidden = $('select-new').hidden = $('select-none').hidden = false;
+    $('picked').hidden = $('found').hidden = $('select-new').hidden = $('select-none').hidden = false;
     $('picked-name').textContent = `📁 ${folderName}`;
-    renderGamePick();
     checking = 1;
     renderFound();
     for (const [i, f] of found.entries()) {
@@ -530,26 +532,9 @@
     renderFound();
   }
 
-  function importGame() {
-    return $('import-game').value === '+' ? $('import-new-game').value.trim() : $('import-game').value;
-  }
-
-  function renderGamePick() {
-    const list = games();
-    $('import-game').replaceChildren(new Option('Choose a game…', ''), ...list.map((g) => new Option(g, g)), new Option('+ New game…', '+'));
-    $('import-game').value = '';
-    $('import-new-game').value = '';
-    gameChanged();
-  }
-
-  function gameChanged() {
-    $('import-new-game').hidden = $('import-game').value !== '+';
-    $('game-pick').classList.toggle('missing', !importGame());
-    summary();
-  }
-
   function renderFound() {
-    $('found').replaceChildren(...found.map((f) => {
+    $('found').replaceChildren(...found.flatMap((f, i) => {
+      const head = i === 0 || found[i - 1].folder !== f.folder ? [el('li', 'group', f.folder)] : [];
       const li = document.createElement('li');
       li.className = f.done ? 'done' : '';
       const play = document.createElement('button');
@@ -589,7 +574,7 @@
       const text = el('span', '', el('span', 't', f.title), badge, document.createElement('br'), el('span', 'meta', meta.filter(Boolean).join(' · ')));
       label.append(box, text);
       li.append(play, label);
-      return li;
+      return [...head, li];
     }));
     summary();
   }
@@ -599,7 +584,6 @@
     const n = found.filter((f) => f.checked && !f.done).length;
     const imported = found.filter((f) => f.dupOf).length;
     const repeats = found.filter((f) => f.sameAs).length;
-    const game = importGame();
     const btn = $('do-import');
     if (checking) {
       $('found-summary').textContent = `Checking ${checking} of ${found.length} files…`;
@@ -610,8 +594,8 @@
     const parts = [`${plural(found.length, 'clip')} found`, `${found.length - imported - repeats} new`, `${imported} already imported`];
     if (repeats) parts.push(plural(repeats, 'repeat'));
     $('found-summary').textContent = found.length ? parts.join(' · ') : '';
-    btn.disabled = !n || !game;
-    btn.textContent = !n ? 'Import selected' : !game ? 'Choose a game first' : `Import ${plural(n, 'clip')}`;
+    btn.disabled = !n;
+    btn.textContent = n ? `Import ${plural(n, 'clip')}` : 'Import selected';
   }
 
   function resetImport() {
@@ -622,7 +606,7 @@
     found.forEach((f) => f.url && URL.revokeObjectURL(f.url));
     found = [];
     $('drop').hidden = false;
-    $('picked').hidden = $('game-pick').hidden = $('found').hidden = $('select-new').hidden = $('select-none').hidden = true;
+    $('picked').hidden = $('found').hidden = $('select-new').hidden = $('select-none').hidden = true;
     $('dir').value = '';
     summary();
   }
@@ -649,32 +633,93 @@
 
   async function doImport() {
     const picked = found.filter((f) => f.checked && !f.done);
-    const game = importGame();
-    if (!picked.length || !game) return;
+    if (!picked.length) return;
     const btn = $('do-import');
     btn.disabled = true;
-    let added = 0;
+    const added = [];
     try {
       for (const [i, f] of picked.entries()) {
         btn.textContent = `Importing ${i + 1} of ${picked.length}…`;
         await api('PUT', `/api/upload?audio=${encodeURIComponent(f.audio)}`, f.file, true);
-        const clip = { title: f.title, audio: f.audio, [GAME]: game };
+        const clip = { title: f.title, audio: f.audio, [FROM]: f.folder };
         if (f.recording) clip[REC] = f.recording;
         inbox.push(clip);
+        added.push(clip);
         server.hashes = { ...server.hashes, [f.audio]: f.hash };
-        added++;
       }
       await api('POST', '/api/inbox', { clips: inbox });
-      toast(`Imported ${plural(added, 'clip')} for ${game}. Give each one a use case.`);
     } catch (err) {
-      toast(`Import stopped after ${plural(added, 'clip')}: ${err.message}`, true);
+      toast(`Import stopped after ${plural(added.length, 'clip')}: ${err.message}`, true);
       await api('POST', '/api/inbox', { clips: inbox }).catch(() => {});
     }
     $('import').close();
     resetImport();
-    const firstNew = picked.find((f) => isInbox(f.audio));
-    if (firstNew) selected = firstNew.audio;
+    if (added.length) selected = added[0].audio;
     refresh();
+    if (added.length) openGames(added);
+  }
+
+  // ---------- step 2: a game per source folder ----------
+
+  let gameRows = []; // [{ folder, clips, select }]
+
+  function gameOptions(select, placeholder) {
+    const keep = select.value;
+    select.replaceChildren(new Option(placeholder, ''), ...games().map((g) => new Option(g, g)), new Option('+ New game…', '+'));
+    select.value = [...select.options].some((o) => o.value === keep && keep !== '+') ? keep : '';
+  }
+
+  // "+ New game…" asks for a name and adds it to every menu; returns false when cancelled.
+  function pickNewGame(select) {
+    if (select.value !== '+') return true;
+    const name = (prompt('Name of the new game') || '').trim();
+    if (!name) { select.value = ''; return false; }
+    for (const s of [$('games-all'), ...gameRows.map((r) => r.select)]) {
+      if (![...s.options].some((o) => o.value === name)) s.insertBefore(new Option(name, name), s.lastElementChild);
+    }
+    select.value = name;
+    return true;
+  }
+
+  function openGames(clips) {
+    const byFolder = new Map();
+    clips.forEach((c) => {
+      if (!byFolder.has(c[FROM])) byFolder.set(c[FROM], []);
+      byFolder.get(c[FROM]).push(c);
+    });
+    gameRows = [...byFolder].map(([folder, list]) => {
+      const select = document.createElement('select');
+      select.setAttribute('aria-label', `Game for ${folder}`);
+      gameOptions(select, 'Pick a game…');
+      const names = list.map((c) => c.title);
+      const sample = names.slice(0, 3).join(', ') + (names.length > 3 ? ', …' : '');
+      const row = el('div', 'gf', el('div', 'name', el('code', '', folder), el('small', '', `${plural(list.length, 'clip')} · ${sample}`)), select);
+      select.onchange = () => { pickNewGame(select); gamesLeft(); };
+      return { folder, clips: list, select, row };
+    });
+    gameOptions($('games-all'), '—');
+    $('games-all').value = '';
+    $('games-intro').textContent = `${plural(clips.length, 'clip')} imported. Every clip in a folder gets that folder's game. You can change one clip's game later in the sidebar.`;
+    $('games-list').replaceChildren(...gameRows.map((r) => r.row));
+    gamesLeft();
+    $('import-games').showModal();
+  }
+
+  function gamesLeft() {
+    gameRows.forEach((r) => r.row.classList.toggle('needs', !r.select.value));
+    const n = gameRows.filter((r) => !r.select.value).length;
+    $('games-left').textContent = n ? `${plural(n, 'folder')} still need${n === 1 ? 's' : ''} a game` : 'Every folder has a game';
+  }
+
+  function saveGames() {
+    let changed = false;
+    for (const r of gameRows) {
+      if (!r.select.value) continue;
+      r.clips.forEach((c) => { const clip = clipOf(c.audio); if (clip) { clip[GAME] = r.select.value; changed = true; } });
+    }
+    gameRows = [];
+    $('import-games').close();
+    if (changed) { saveInbox(); refresh(); }
   }
 
   function wireImport() {
@@ -684,8 +729,14 @@
     $('pick-again').onclick = resetImport;
     $('select-new').onclick = () => { found.forEach((f) => (f.checked = !f.done)); renderFound(); };
     $('select-none').onclick = () => { found.forEach((f) => (f.checked = false)); renderFound(); };
-    $('import-game').onchange = () => { gameChanged(); if (!$('import-new-game').hidden) $('import-new-game').focus(); };
-    $('import-new-game').oninput = gameChanged;
+    $('games-all').onchange = () => {
+      const all = $('games-all');
+      if (!pickNewGame(all) || !all.value) return;
+      gameRows.forEach((r) => (r.select.value = all.value));
+      gamesLeft();
+    };
+    $('games-done').onclick = saveGames;
+    $('games-skip').onclick = () => { gameRows = []; $('import-games').close(); };
     $('dir').onchange = () => {
       const files = [...$('dir').files];
       if (!files.length) return;
@@ -736,7 +787,7 @@
       btn.disabled = true;
       btn.textContent = 'Publishing…';
       const p = pending();
-      const clips = live().concat(p.add);
+      const clips = live().concat(p.add.map(({ [FROM]: _, ...c }) => c)); // the import folder stays on this computer
       try {
         const result = await api('POST', '/api/publish', {
           version: server.version,

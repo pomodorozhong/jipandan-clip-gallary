@@ -74,6 +74,7 @@
   <dialog class="sheet" id="import">
     <div class="sheet-inner">
       <h2>Import clips</h2>
+      <p class="steps"><b>1 Pick files</b> · 2 Games</p>
       <div class="drop" id="drop">
         <strong>Drop an export folder here</strong>
         <span>Every audio file inside it is listed, including subfolders.</span>
@@ -83,12 +84,6 @@
         <strong id="picked-name"></strong>
         <button type="button" class="linkish" id="pick-again">Change folder</button>
       </div>
-      <div class="game-pick" id="game-pick" hidden>
-        <label for="import-game">Source game</label>
-        <select id="import-game"></select>
-        <input id="import-new-game" type="text" placeholder="Game name" autocomplete="off" spellcheck="false" hidden>
-        <p class="hint">Every clip in this import gets this game. You can change one clip's game later in the sidebar.</p>
-      </div>
       <ul class="found" id="found" hidden></ul>
       <div class="sheet-actions">
         <span class="spacer" id="found-summary"></span>
@@ -96,6 +91,22 @@
         <button class="btn quiet" id="select-none" hidden>Clear</button>
         <button class="btn quiet" id="close-import">Cancel</button>
         <button class="btn primary" id="do-import" disabled>Import selected</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Second import step: one game per source folder, for the clips just imported. -->
+  <dialog class="sheet" id="import-games">
+    <div class="sheet-inner">
+      <h2>Pick a game for each folder</h2>
+      <p class="steps">1 Pick files · <b>2 Games</b></p>
+      <p class="hint" id="games-intro"></p>
+      <label class="set-all">Set every folder to <select id="games-all"></select></label>
+      <div class="games" id="games-list"></div>
+      <div class="sheet-actions">
+        <span class="spacer" id="games-left"></span>
+        <button class="btn quiet" id="games-skip">Skip for now</button>
+        <button class="btn primary" id="games-done">Done</button>
       </div>
     </div>
   </dialog>

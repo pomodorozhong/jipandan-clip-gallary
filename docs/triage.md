@@ -1,6 +1,6 @@
 # Importing and triaging clips
 
-New clips go through a triage page that runs only on your computer. You import exported clips with their source game, give each clip a use case, then publish them. The team's GitHub Pages site only ever shows published clips.
+New clips go through a triage page that runs only on your computer. You import exported clips, give each source folder a game and each clip a use case, then publish them. The team's GitHub Pages site only ever shows published clips.
 
 ## Opening the triage page
 
@@ -13,11 +13,11 @@ The first time, macOS may ask whether to open the file; choose Open.
 ## Importing
 
 1. Click **+ Import** at the top of the sidebar, then **Choose folder…** or drop an export folder onto the box.
-2. Every audio file in the folder and its subfolders is listed with its title, recording and file name. Play any of them to check. **Change folder** goes back to pick a different export.
-3. Pick the **Source game**, or **+ New game…**. Every clip in this import gets that game. **Import** stays off until you pick one.
-4. Click **Import**. The clips are copied into `inbox/` in the repository, which git ignores, and appear in the **Untagged** column.
+2. Every audio file in the folder and its subfolders is listed under its source folder (the export folder first, then each subfolder), with its title, recording and file name. Play any of them to check. **Change folder** goes back to pick a different export.
+3. Click **Import**. The clips are copied into `inbox/` in the repository, which git ignores, and appear in the **Untagged** column.
+4. The dialog moves on to **Pick a game for each folder**: one menu per source folder, with its clips listed. **Set every folder to** fills them all at once, and **+ New game…** adds a game. **Done** gives every clip its folder's game. **Skip for now** leaves them in the **No game yet** column, to set later from the sidebar.
 
-All clips are stored flat in `clips/` under their export file name; subfolders in the export are not kept. While listing, the page checks each file's audio content (a SHA-256 hash) against the gallery:
+All clips are stored flat in `clips/` under their export file name; subfolders in the export only group clips for picking games. A clip remembers its source folder while it waits in `inbox/`, and that is dropped when it is published. While listing, the page checks each file's audio content (a SHA-256 hash) against the gallery:
 
 - **Already imported:** the same audio is already a clip, even under another file name. It is greyed out and not imported again.
 - **Repeat:** the same audio appears twice in the export folder; only the first is imported.
