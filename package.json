@@ -4,8 +4,11 @@
   "description": "Static viewer for skimming the team's voice clips on a board of chips.",
   "scripts": {
     "serve": "serve src --listen 8765",
-    "check": "node --check src/assets/app.js && node --check triage/triage.js && python3 -m py_compile scripts/triage.py && node -e \"JSON.parse(require('fs').readFileSync('src/data/clips.json', 'utf8'))\"",
-    "triage": "python3 scripts/triage.py"
+    "check": "node --check src/assets/app.js && node --check triage/triage.js && node --check scripts/triage.mjs && node -e \"JSON.parse(require('fs').readFileSync('src/data/clips.json', 'utf8'))\"",
+    "triage": "node scripts/triage.mjs"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "devDependencies": {
     "serve": "^14.2.8"

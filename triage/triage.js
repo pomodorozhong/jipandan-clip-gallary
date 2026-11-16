@@ -2,7 +2,7 @@
 //
 // The board itself is the viewer's src/assets/app.js. This script loads before it, sets
 // `window.clipBoardHooks`, and redraws the board through `window.clipBoard` after each change.
-// Clips that are not published yet live in inbox/ (see scripts/triage.py) and never reach GitHub
+// Clips that are not published yet live in inbox/ (see scripts/triage.mjs) and never reach GitHub
 // until they have both a game and a use case and you press Publish.
 (() => {
   'use strict';
