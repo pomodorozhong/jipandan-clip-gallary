@@ -1,0 +1,440 @@
+// Regression tests for the local triage server (scripts/triage.mjs).
+//
+// Each run builds a throwaway copy of the project in a temporary folder: a git repository on a work
+// branch with a local bare repository as its remote, a few published clips and a few inbox clips.
+// It starts the real server there and talks to it over HTTP, so nothing touches this checkout.
+//
+// Run with `npm test`. Needs only Node.js and git.
+
+import { after, before, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { spawn, execFileSync } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
+import fs from 'node:fs';
+import http from 'node:http';
+import net from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const BRANCH = 'feat/test';
+
+let tmp; // the throwaway project
+let remote; // its bare remote
+let server; // the running server process
+let port;
+let base; // http://127.0.0.1:<port>
+let origin; // the Origin the server accepts
+let startupLog = '';
+
+const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
+const file = (...parts) => path.join(tmp, ...parts);
+const readJson = (...parts) => JSON.parse(fs.readFileSync(file(...parts), 'utf8'));
+const git = (...args) => execFileSync('git', args, { cwd: tmp, encoding: 'utf8' }).trim();
+const audio = (size = 4000) => randomBytes(size);
+const enc = (name) => encodeURIComponent(name); // a clip's audio value as a query parameter
+
+// Fixture audio. The names cover full-width look-alikes, URL characters and a clash with a free name.
+const AUDIO = {
+  published: audio(),        // src/clips/grunt.mp3, a published clip
+  publishedOld: audio(),     // src/clips/old.mp3, a published clip that Publish drops
+  question: audio(33433),    // inbox file "0602_0029_(?????).mp3"
+  hash: audio(),             // inbox file "a#b.mp3"
+  clash: audio(),            // inbox file "x?.mp3", whose safe name "x？.mp3" is already taken
+  taken: audio(),            // inbox file "x？.mp3"
+  dropped: audio(),          // inbox file "plain.mp3", dropped
+};
+
+function writeJson(rel, data) {
+  fs.mkdirSync(path.dirname(file(rel)), { recursive: true });
+  fs.writeFileSync(file(rel), JSON.stringify(data, null, 2) + '\n');
+}
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const s = net.createServer();
+    s.unref();
+    s.on('error', reject);
+    s.listen(0, '127.0.0.1', () => {
+      const { port: p } = s.address();
+      s.close(() => resolve(p));
+    });
+  });
+}
+
+// A GET with the path sent exactly as written (fetch would normalise "..").
+function rawGet(rawPath, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ host: '127.0.0.1', port, path: rawPath, headers }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+const get = (p, headers) => fetch(base + p, { headers, redirect: 'manual' });
+const send = (method, p, body, { json = true, from = origin } = {}) => fetch(base + p, {
+  method,
+  headers: { ...(from ? { Origin: from } : {}), ...(json ? { 'Content-Type': 'application/json' } : {}) },
+  body: json ? JSON.stringify(body) : body,
+});
+const state = async () => (await get('/api/state')).json();
+
+before(async () => {
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'triage-test-'));
+  remote = fs.mkdtempSync(path.join(os.tmpdir(), 'triage-remote-'));
+
+  // The server and the pages it serves, copied from this checkout.
+  fs.mkdirSync(file('scripts'));
+  fs.copyFileSync(path.join(ROOT, 'scripts', 'triage.mjs'), file('scripts', 'triage.mjs'));
+  fs.cpSync(path.join(ROOT, 'triage'), file('triage'), { recursive: true });
+  fs.cpSync(path.join(ROOT, 'src', 'assets'), file('src', 'assets'), { recursive: true });
+  fs.copyFileSync(path.join(ROOT, 'src', 'index.html'), file('src', 'index.html'));
+  fs.writeFileSync(file('.gitignore'), 'inbox/\n');
+
+  // Published: two clips with audio, one without.
+  fs.mkdirSync(file('src', 'clips'), { recursive: true });
+  fs.writeFileSync(file('src', 'clips', 'grunt.mp3'), AUDIO.published);
+  fs.writeFileSync(file('src', 'clips', 'old.mp3'), AUDIO.publishedOld);
+  writeJson('src/data/clips.json', {
+    dimensions: [{ key: 'use-case', label: 'Use case' }, { key: 'source-game', label: 'Source game' }],
+    clips: [
+      { title: 'Grunt', audio: 'clips/grunt.mp3', 'source-game': 'A', 'use-case': 'Hurt' },
+      { title: 'Old', audio: 'clips/old.mp3', 'source-game': 'A', 'use-case': 'Hurt' },
+      { title: 'Gone', audio: 'clips/gone.mp3', 'source-game': 'A', 'use-case': 'Hurt' },
+    ],
+  });
+
+  // Inbox: clips imported before ?, # and % were kept out of file names.
+  fs.mkdirSync(file('inbox', 'clips'), { recursive: true });
+  fs.writeFileSync(file('inbox', 'clips', '0602_0029_(?????).mp3'), AUDIO.question);
+  fs.writeFileSync(file('inbox', 'clips', 'a#b.mp3'), AUDIO.hash);
+  fs.writeFileSync(file('inbox', 'clips', 'x?.mp3'), AUDIO.clash);
+  fs.writeFileSync(file('inbox', 'clips', 'x？.mp3'), AUDIO.taken);
+  fs.writeFileSync(file('inbox', 'clips', 'plain.mp3'), AUDIO.dropped);
+  writeJson('inbox/clips.json', {
+    clips: [
+      { title: '(?????)', audio: 'clips/0602_0029_(%3F%3F%3F%3F%3F).mp3', 'import-folder': 'export/', recording: '0602', 'source-game': 'B', 'use-case': 'Victory' },
+      { title: 'a#b', audio: 'clips/a%23b.mp3', 'source-game': 'B' },
+      { title: 'x?', audio: 'clips/x%3F.mp3' },
+      { title: 'x？', audio: 'clips/x？.mp3' },
+      { title: 'plain', audio: 'clips/plain.mp3', dropped: true },
+    ],
+  });
+
+  execFileSync('git', ['init', '--quiet', '--bare', remote]);
+  execFileSync('git', ['init', '--quiet', '-b', BRANCH], { cwd: tmp });
+  git('config', 'user.name', 'Test');
+  git('config', 'user.email', 'test@example.com');
+  git('config', 'commit.gpgsign', 'false');
+  git('add', '-A');
+  git('commit', '--quiet', '-m', 'fixture');
+  git('remote', 'add', 'origin', remote);
+  git('push', '--quiet', '--set-upstream', 'origin', BRANCH);
+
+  port = await freePort();
+  base = `http://127.0.0.1:${port}`;
+  origin = base;
+  server = spawn(process.execPath, ['scripts/triage.mjs', '--port', String(port), '--no-browser'], { cwd: tmp });
+  server.stderr.on('data', (d) => { startupLog += d; });
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`server did not start:\n${startupLog}`)), 10000);
+    server.stdout.on('data', (d) => {
+      startupLog += d;
+      if (startupLog.includes('Triage page:')) { clearTimeout(timer); resolve(); }
+    });
+    server.on('exit', (code) => reject(new Error(`server exited with ${code}:\n${startupLog}`)));
+  });
+});
+
+after(() => {
+  server?.kill();
+  if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
+  if (remote) fs.rmSync(remote, { recursive: true, force: true });
+});
+
+describe('start-up', () => {
+  test('renames inbox files whose names have ?, # or % and updates their clips', () => {
+    assert.match(startupLog, /Renamed 3 inbox file\(s\)/);
+    const names = fs.readdirSync(file('inbox', 'clips')).sort();
+    assert.deepEqual(names, ['0602_0029_(？？？？？).mp3', 'a＃b.mp3', 'plain.mp3', 'x？-2.mp3', 'x？.mp3'].sort());
+    const clips = readJson('inbox', 'clips.json').clips;
+    assert.deepEqual(clips.map((c) => c.audio), [
+      'clips/0602_0029_(？？？？？).mp3', 'clips/a＃b.mp3', 'clips/x？-2.mp3', 'clips/x？.mp3', 'clips/plain.mp3',
+    ]);
+    assert.equal(clips[0].title, '(?????)', 'the title keeps the original characters');
+    assert.deepEqual(fs.readFileSync(file('inbox', 'clips', 'x？-2.mp3')), AUDIO.clash, 'a taken safe name gets -2');
+    assert.deepEqual(fs.readFileSync(file('inbox', 'clips', 'x？.mp3')), AUDIO.taken, 'the file that had the name is untouched');
+  });
+});
+
+describe('GET /api/state', () => {
+  test('reports the published list, the inbox, missing audio, hashes and the branch', async () => {
+    const s = await state();
+    assert.equal(s.published.clips.length, 3);
+    assert.equal(s.inbox.clips.length, 5);
+    assert.deepEqual(s.missing, ['clips/gone.mp3']);
+    assert.equal(s.version, sha(fs.readFileSync(file('src', 'data', 'clips.json'))));
+    assert.equal(s.branch, BRANCH);
+    assert.equal(s.canPublish, true);
+    assert.equal(s.liveBranch, 'main');
+    assert.equal(s.compareUrl, '', 'origin is not on GitHub');
+    assert.equal(s.hashes['clips/grunt.mp3'], sha(AUDIO.published));
+    assert.equal(s.hashes['clips/0602_0029_(？？？？？).mp3'], sha(AUDIO.question));
+    assert.equal(Object.keys(s.hashes).length, 7);
+  });
+});
+
+describe('static files', () => {
+  for (const [p, type] of [
+    ['/', 'text/html'],
+    ['/triage/triage.js', 'text/javascript'],
+    ['/triage/triage.css', 'text/css'],
+    ['/assets/app.js', 'text/javascript'],
+    ['/data/clips.json', 'application/json'],
+    ['/gallery/', 'text/html'],
+    ['/gallery/assets/style.css', 'text/css'],
+    ['/gallery/data/clips.json', 'application/json'],
+  ]) {
+    test(`serves ${p}`, async () => {
+      const res = await get(p);
+      assert.equal(res.status, 200);
+      assert.ok(res.headers.get('content-type').startsWith(type), res.headers.get('content-type'));
+    });
+  }
+
+  test('redirects /gallery to /gallery/', async () => {
+    const res = await get('/gallery');
+    assert.equal(res.status, 301);
+    assert.equal(res.headers.get('location'), '/gallery/');
+  });
+
+  test('the gallery shows published audio only, not the inbox', async () => {
+    assert.equal((await get('/gallery/clips/grunt.mp3')).status, 200);
+    assert.equal((await get(`/gallery/clips/${enc('a＃b.mp3')}`)).status, 404);
+  });
+
+  for (const p of [
+    '/clips/../scripts/triage.mjs',
+    '/triage/../scripts/triage.mjs',
+    '/triage/%2e%2e/scripts/triage.mjs',
+    '/gallery/..%2fscripts/triage.mjs',
+    '/triage/..%2fscripts/triage.mjs',
+    '/assets/..%2f..%2finbox/clips.json',
+    '/clips/%E0%A4%A.mp3',
+    '/scripts/triage.mjs',
+    '/inbox/clips.json',
+    '/nope',
+  ]) {
+    test(`refuses ${p}`, async () => {
+      assert.equal((await rawGet(p)).status, 404);
+    });
+  }
+});
+
+describe('audio', () => {
+  const question = `/clips/${enc('0602_0029_(？？？？？).mp3')}`;
+
+  test('serves an inbox clip under its full-width name', async () => {
+    const res = await get(question);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'audio/mpeg');
+    assert.equal(res.headers.get('accept-ranges'), 'bytes');
+    assert.deepEqual(Buffer.from(await res.arrayBuffer()), AUDIO.question);
+  });
+
+  test('serves a published clip at the same kind of path', async () => {
+    const res = await get('/clips/grunt.mp3');
+    assert.deepEqual(Buffer.from(await res.arrayBuffer()), AUDIO.published);
+  });
+
+  for (const [range, start, end] of [['bytes=100-199', 100, 199], ['bytes=-50', 33383, 33432], ['bytes=33000-', 33000, 33432], ['bytes=33400-99999', 33400, 33432]]) {
+    test(`answers Range: ${range} (Safari needs ranges for audio)`, async () => {
+      const res = await get(question, { Range: range });
+      assert.equal(res.status, 206);
+      assert.equal(res.headers.get('content-range'), `bytes ${start}-${end}/33433`);
+      assert.deepEqual(Buffer.from(await res.arrayBuffer()), AUDIO.question.subarray(start, end + 1));
+    });
+  }
+
+  test('ignores a Range it cannot read', async () => {
+    const res = await get(question, { Range: 'bytes=abc-def' });
+    assert.equal(res.status, 200);
+    assert.equal(Number(res.headers.get('content-length')), 33433);
+  });
+});
+
+describe('writes need the triage page', () => {
+  test('a request without an Origin is refused', async () => {
+    assert.equal((await send('POST', '/api/inbox', { clips: [] }, { from: null })).status, 403);
+  });
+
+  test('a request from another website is refused', async () => {
+    assert.equal((await send('POST', '/api/inbox', { clips: [] }, { from: 'https://example.com' })).status, 403);
+    assert.equal((await send('PUT', `/api/upload?audio=${enc('clips/evil.mp3')}`, audio(), { json: false, from: 'https://example.com' })).status, 403);
+    assert.ok(!fs.existsSync(file('inbox', 'clips', 'evil.mp3')));
+  });
+});
+
+describe('PUT /api/upload', () => {
+  const name = 'new％clip.mp3';
+  const bytes = audio();
+  const upload = (audioValue, body) => send('PUT', `/api/upload?audio=${enc(audioValue)}`, body, { json: false });
+
+  test('stores a new file in the inbox', async () => {
+    const res = await upload(`clips/${name}`, bytes);
+    assert.equal(res.status, 200);
+    assert.deepEqual(fs.readFileSync(file('inbox', 'clips', name)), bytes);
+  });
+
+  test('accepts the same bytes again (a retried import)', async () => {
+    assert.equal((await upload(`clips/${name}`, bytes)).status, 200);
+  });
+
+  test('never overwrites a different file in the inbox', async () => {
+    const res = await upload(`clips/${name}`, audio());
+    assert.equal(res.status, 409);
+    assert.match((await res.json()).error, /already exists/);
+    assert.deepEqual(fs.readFileSync(file('inbox', 'clips', name)), bytes);
+  });
+
+  test('never shadows a published file with different bytes', async () => {
+    assert.equal((await upload('clips/grunt.mp3', audio())).status, 409);
+    assert.ok(!fs.existsSync(file('inbox', 'clips', 'grunt.mp3')));
+  });
+
+  for (const [label, value] of [
+    ['a path outside clips/', 'clips/../../evil.mp3'],
+    ['a path not under clips/', 'src/evil.mp3'],
+    ['a file that is not audio', 'clips/notes.txt'],
+  ]) {
+    test(`refuses ${label}`, async () => {
+      assert.equal((await upload(value, audio())).status, 400);
+    });
+  }
+
+  test('refuses a malformed escape', async () => {
+    assert.equal((await send('PUT', '/api/upload?audio=%E0%A4%A', audio(), { json: false })).status, 400);
+  });
+
+  test('refuses an unknown endpoint', async () => {
+    assert.equal((await send('PUT', '/api/other', audio(), { json: false })).status, 404);
+  });
+});
+
+describe('POST /api/inbox', () => {
+  test('saves the inbox in the same JSON format as before and drops empty fields', async () => {
+    const before = readJson('inbox', 'clips.json');
+    const clips = before.clips.map((c) => ({ ...c }));
+    clips[1].note = '';
+    clips[1].tags = [];
+    clips[1].other = null;
+    const res = await send('POST', '/api/inbox', { clips });
+    assert.equal(res.status, 200);
+    assert.equal(fs.readFileSync(file('inbox', 'clips.json'), 'utf8'), JSON.stringify(before, null, 2) + '\n');
+  });
+
+  test('keeps non-ASCII titles as they are', () => {
+    assert.ok(fs.readFileSync(file('inbox', 'clips.json'), 'utf8').includes('"(?????)"'));
+    assert.ok(fs.readFileSync(file('inbox', 'clips.json'), 'utf8').includes('？？？？？'));
+  });
+
+  for (const [label, clip] of [
+    ['a clip without a title', { audio: 'clips/a.mp3' }],
+    ['a clip with a blank title', { title: '  ', audio: 'clips/a.mp3' }],
+    ['a clip without audio', { title: 'a' }],
+    ['a clip with audio outside clips/', { title: 'a', audio: 'clips/../x.mp3' }],
+  ]) {
+    test(`refuses ${label} and leaves the inbox alone`, async () => {
+      const before = fs.readFileSync(file('inbox', 'clips.json'), 'utf8');
+      assert.equal((await send('POST', '/api/inbox', { clips: [clip] })).status, 400);
+      assert.equal(fs.readFileSync(file('inbox', 'clips.json'), 'utf8'), before);
+    });
+  }
+
+  test('refuses a body that is not JSON', async () => {
+    const res = await send('POST', '/api/inbox', 'not json', { json: false });
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, 'request body is not JSON');
+  });
+});
+
+describe('POST /api/publish', () => {
+  test('refuses when clips.json changed since the page loaded', async () => {
+    const s = await state();
+    const res = await send('POST', '/api/publish', { version: 'stale', published: s.published, inbox: s.inbox });
+    assert.equal(res.status, 409);
+    assert.match((await res.json()).error, /changed since the page loaded/);
+  });
+
+  test('refuses two clips with the same audio', async () => {
+    const s = await state();
+    const res = await send('POST', '/api/publish', { version: s.version, published: s.published, inbox: { clips: [s.published.clips[0]] } });
+    assert.equal(res.status, 400);
+    assert.match((await res.json()).error, /same audio file/);
+  });
+
+  test('moves ready clips out of the inbox, drops removed ones, commits only src/ and pushes', async () => {
+    const s = await state();
+    const ready = s.inbox.clips.find((c) => c.title === '(?????)');
+    const rest = s.inbox.clips.filter((c) => c !== ready);
+    // Keep Grunt, remove Old (its audio is deleted) and Gone (no audio), and publish the ready clip.
+    const published = { dimensions: s.published.dimensions, clips: [s.published.clips[0], ready] };
+    const res = await send('POST', '/api/publish', { version: s.version, published, inbox: { clips: rest } });
+    const result = await res.json();
+    assert.equal(res.status, 200, JSON.stringify(result));
+    assert.equal(result.committed, true);
+    assert.equal(result.pushed, true);
+    assert.equal(result.message, `Pushed 1 new clip, 1 removed clip to ${BRANCH} (${result.commit}). They go live once ${BRANCH} is merged into main.`);
+
+    const name = '0602_0029_(？？？？？).mp3';
+    assert.deepEqual(fs.readFileSync(file('src', 'clips', name)), AUDIO.question, 'audio moved into src/clips');
+    assert.ok(!fs.existsSync(file('inbox', 'clips', name)), 'and out of the inbox');
+    assert.ok(!fs.existsSync(file('src', 'clips', 'old.mp3')), 'a removed clip loses its audio');
+
+    const data = readJson('src', 'data', 'clips.json');
+    assert.deepEqual(data.clips.map((c) => c.title), ['Grunt', '(?????)']);
+    assert.ok(!('import-folder' in data.clips[1]), 'the import folder stays in the inbox');
+    assert.equal(data.clips[1].recording, '0602');
+    assert.deepEqual(readJson('inbox', 'clips.json').clips.map((c) => c.title), rest.map((c) => c.title));
+
+    assert.equal(git('log', '-1', '--format=%s'), 'chore: publish 1 new clip, 1 removed clip');
+    const changed = git('show', '--name-only', '--format=', 'HEAD').split('\n').map((p) => p.replace(/^"|"$/g, ''));
+    assert.ok(changed.every((p) => p.startsWith('src/')), changed.join(', '));
+    assert.equal(git('rev-parse', `origin/${BRANCH}`), git('rev-parse', 'HEAD'));
+    assert.equal(execFileSync('git', ['rev-parse', BRANCH], { cwd: remote, encoding: 'utf8' }).trim(), git('rev-parse', 'HEAD'));
+
+    assert.equal(result.state.version, sha(fs.readFileSync(file('src', 'data', 'clips.json'))), 'the reply carries the new state');
+    assert.deepEqual(result.state.missing, []);
+  });
+
+  test('the gallery then serves the published clip', async () => {
+    const res = await get(`/gallery/clips/${enc('0602_0029_(？？？？？).mp3')}`);
+    assert.equal(res.status, 200);
+    assert.deepEqual(Buffer.from(await res.arrayBuffer()), AUDIO.question);
+  });
+
+  test('says so when nothing changed', async () => {
+    const s = await state();
+    const res = await send('POST', '/api/publish', { version: s.version, published: s.published, inbox: s.inbox });
+    const result = await res.json();
+    assert.equal(result.committed, false);
+    assert.equal(result.message, 'Nothing changed, so nothing was published.');
+  });
+
+  test('refuses when clips.json has uncommitted changes', async () => {
+    const s = await state();
+    fs.appendFileSync(file('src', 'data', 'clips.json'), ' ');
+    try {
+      const res = await send('POST', '/api/publish', { version: sha(fs.readFileSync(file('src', 'data', 'clips.json'))), published: s.published, inbox: s.inbox });
+      assert.equal(res.status, 409);
+      assert.match((await res.json()).error, /uncommitted changes/);
+    } finally {
+      git('checkout', '--', 'src/data/clips.json');
+    }
+  });
+});

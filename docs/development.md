@@ -14,8 +14,18 @@ npm install
 npm run serve
 ```
 
-Then open http://localhost:8765. `npm run check` catches syntax errors in the script and in the data file.
+Then open http://localhost:8765. `npm run check` catches syntax errors in the scripts and in the data file.
+
+## Tests
+
+```bash
+npm test
+```
+
+[tests/triage-server.test.mjs](../tests/triage-server.test.mjs) checks the local triage server (`scripts/triage.mjs`) with Node's built-in test runner. Each run builds a throwaway project in a temporary folder (a git repository with a local bare repository as its remote, a few published clips and a few inbox clips), starts the real server there, and talks to it over HTTP, so it never touches your checkout or GitHub. It covers renaming `?`, `#` and `%` file names on start, the state the page loads, static files and the gallery, audio and byte ranges, refused paths, the check that only the triage page may write, uploads that must not overwrite a different file, inbox saves, and Publish (moving audio, removing dropped clips, committing only `src/` and pushing). It needs Node.js and git, nothing else.
+
+The page itself (layout, playback in the browser, keyboard) has no automated tests yet.
 
 ## Hosting on GitHub Pages
 
-The workflow in [.github/workflows/pages.yml](../.github/workflows/pages.yml) publishes the `src` folder as it is, with no build. In the repository's **Settings → Pages**, set **Source** to "GitHub Actions". The viewer is then published at `https://<owner>.github.io/jipandan-clip-gallary/` and updates on every push to `main`. The same workflow runs `npm run check` on every pull request.
+The workflow in [.github/workflows/pages.yml](../.github/workflows/pages.yml) publishes the `src` folder as it is, with no build. In the repository's **Settings → Pages**, set **Source** to "GitHub Actions". The viewer is then published at `https://<owner>.github.io/jipandan-clip-gallary/` and updates on every push to `main`. The same workflow runs `npm run check` and `npm test` on every pull request.

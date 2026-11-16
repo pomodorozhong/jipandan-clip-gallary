@@ -5,6 +5,7 @@
   "scripts": {
     "serve": "serve src --listen 8765",
     "check": "node --check src/assets/app.js && node --check triage/triage.js && node --check scripts/triage.mjs && node -e \"JSON.parse(require('fs').readFileSync('src/data/clips.json', 'utf8'))\"",
+    "test": "node --test tests/",
     "triage": "node scripts/triage.mjs"
   },
   "engines": {
