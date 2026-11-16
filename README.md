@@ -16,6 +16,14 @@ npm run serve
 
 Then open http://localhost:8765.
 
+To import, tag and publish new clips, open the local triage page:
+
+```bash
+npm run triage
+```
+
+It opens in your browser at http://127.0.0.1:8770. You can also double-click `Triage.command` in Finder. See [Importing and triaging clips](docs/triage.md).
+
 ## Docs
 
 - [Goals](docs/goals.md): what the gallery is for, its phases, and non-goals.
