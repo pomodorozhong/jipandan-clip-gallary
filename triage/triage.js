@@ -10,6 +10,7 @@
   const GAME = 'source-game';
   const USE = 'use-case';
   const REC = 'recording';
+  const DROPPED = 'Dropped';      // the board column for dropped clips
   const FROM = 'import-folder'; // the export folder a clip came from; kept in the inbox only, dropped on publish
   // jipandan-clip export names: <recording>_<4+ digit clip id, maybe "-N">_<title>, maybe " (N)".
   const EXPORT_NAME = /^(.+)_(\d{4,}(?:-\d+)?)_(.+?)(?: \(\d+\))?$/;
@@ -50,13 +51,19 @@
   const ready = (c) => has(c, GAME) && has(c, USE);
   const edited = (c) => original.get(c.audio) !== JSON.stringify(c);
 
+  // A dropped clip stays on the board in a Dropped column. In the inbox it is kept but never published;
+  // a dropped published clip is removed from the gallery, with its audio, on the next Publish.
+  const isDropped = (c) => Boolean(c && c.dropped);
+
   function pending() {
     return {
-      add: inbox.filter(ready),
-      edit: live().filter(edited),
-      drop: pub.filter((c) => removed.has(c.audio)),
+      add: inbox.filter((c) => ready(c) && !isDropped(c)),
+      edit: live().filter((c) => !isDropped(c) && edited(c)),
+      missing: pub.filter((c) => removed.has(c.audio)),
+      dropped: live().filter(isDropped),
     };
   }
+  const pendingCount = (p) => p.add.length + p.edit.length + p.missing.length + p.dropped.length;
 
   function useCases() {
     const dim = dims.find((d) => d.key === USE);
@@ -139,9 +146,10 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       load(await res.json());
       setTimeout(afterStart);
-      return { dimensions: boardDims(), clips: allClips() };
+      return { dimensions: boardDims(), clips: boardClips() };
     },
     decorateChip(btn, clip) {
+      btn.classList.toggle('dropped', isDropped(clipOf(clip.audio)));
       btn.classList.toggle('selected', clip.audio === selected);
       btn.classList.toggle('changed', isInbox(clip.audio) || edited(clipOf(clip.audio) || clip));
       if (server && server.missing.includes(clip.audio)) btn.classList.add('broken');
@@ -152,14 +160,24 @@
     },
     orderColumns(values, key) {
       const none = board().NONE;
-      return (key === USE || key === GAME) && values.includes(none) ? [none, ...values.filter((v) => v !== none)] : values;
+      let out = values.filter((v) => v !== DROPPED);
+      if ((key === USE || key === GAME) && out.includes(none)) out = [none, ...out.filter((v) => v !== none)];
+      return values.includes(DROPPED) ? [...out, DROPPED] : out;
     },
     decorateColumn(section, value, key) {
+      if (value === DROPPED) { section.classList.add('dropped-col'); return; }
       if (value !== board().NONE || (key !== USE && key !== GAME)) return;
       section.classList.add('untagged');
       section.querySelector('h2').firstChild.textContent = (key === USE ? 'Untagged' : 'No game yet') + ' ';
     },
   };
+
+  // What the board shows: a dropped clip has "Dropped" for every dimension, so it lands in the
+  // Dropped column whatever the columns are split by. Its real tags stay on the clip.
+  function boardClips() {
+    const keys = boardDims().map((d) => d.key);
+    return allClips().map((c) => (isDropped(c) ? { ...c, ...Object.fromEntries(keys.map((k) => [k, DROPPED])) } : c));
+  }
 
   // ---------- drawing ----------
 
@@ -189,7 +207,7 @@
       });
     }
 
-    board().update({ dimensions: boardDims(), clips: allClips() });
+    board().update({ dimensions: boardDims(), clips: boardClips() });
     renderSide();
     if (!doAnimate) return;
 
@@ -288,11 +306,12 @@
 
   function renderTagPanel() {
     const clip = selected && clipOf(selected);
-    const needGame = allClips().filter((c) => !has(c, GAME));
+    const needGame = allClips().filter((c) => !isDropped(c) && !has(c, GAME));
 
-    // Progress over the clips waiting in the inbox.
-    const total = inbox.length;
-    const done = inbox.filter((c) => has(c, USE)).length;
+    // Progress over the clips waiting in the inbox (dropped ones don't count).
+    const waiting = inbox.filter((c) => !isDropped(c));
+    const total = waiting.length;
+    const done = waiting.filter((c) => has(c, USE)).length;
     const progress = $('progress');
     if (total) {
       const bar = el('div', 'bar', el('i'));
@@ -313,8 +332,13 @@
       play.innerHTML = ICON_PLAY;
       play.title = 'Play or stop (Space)';
       play.onclick = () => board().toggle(clip.audio);
-      const where = el('small', '', isInbox(clip.audio) ? 'not published' : 'published');
-      $('now').replaceChildren(el('div', 'now', play, el('div', 'now-text', el('b', '', clip.title), where)), gameMenu(clip));
+      const where = el('small', '', isInbox(clip.audio) ? 'not published' : 'published', isDropped(clip) ? ' · dropped' : '');
+      const dropBtn = button('btn quiet small drop-btn', isDropped(clip) ? 'Restore ' : 'Drop ', kbd('D'));
+      dropBtn.title = isDropped(clip)
+        ? 'Bring this clip back from the Dropped column'
+        : isInbox(clip.audio) ? 'Move this clip to the Dropped column; it is never published' : 'Remove this clip from the gallery on the next Publish';
+      dropBtn.onclick = toggleDrop;
+      $('now').replaceChildren(el('div', 'now', play, el('div', 'now-text', el('b', '', clip.title), where)), isDropped(clip) ? null : gameMenu(clip), dropBtn);
     } else {
       const next = nextUntagged(null);
       const card = el('div', 'now empty', el('b', '', 'No clip selected'));
@@ -329,8 +353,8 @@
     }
 
     // Use cases: only shown with a clip selected, so nothing sits there disabled.
-    $('use-block').hidden = !clip;
-    if (!clip) return;
+    $('use-block').hidden = !clip || isDropped(clip);
+    if (!clip || isDropped(clip)) return;
     const all = useCases();
     const keys = keyedUses();
     const rest = all.filter((u) => !keys.includes(u)).sort((a, b) => useCount(b) - useCount(a) || a.localeCompare(b));
@@ -383,7 +407,7 @@
 
   function renderActions() {
     const p = pending();
-    const n = p.add.length + p.edit.length + p.drop.length;
+    const n = pendingCount(p);
     const btn = $('publish');
     btn.disabled = !n || !server.canPublish;
     btn.replaceChildren(n ? 'Publish ' : 'Nothing to publish');
@@ -441,7 +465,7 @@
     const order = chipsInOrder();
     const at = order.indexOf(from);
     const rest = order.slice(at + 1).concat(order.slice(0, Math.max(at, 0)));
-    return rest.find((a) => a !== from && !has(clipOf(a) || {}, USE)) || null;
+    return rest.find((a) => { const c = clipOf(a); return a !== from && c && !isDropped(c) && !has(c, USE); }) || null;
   }
 
   function play(audio) {
@@ -461,6 +485,28 @@
     if (next) selected = next;
     refresh();
     play(next);
+  }
+
+  // Drop the selected clip (or restore a dropped one), move on to the next untagged clip, and offer Undo.
+  function toggleDrop() {
+    const clip = selected && clipOf(selected);
+    if (!clip) return;
+    const dropping = !isDropped(clip);
+    if (dropping) clip.dropped = true;
+    else delete clip.dropped;
+    if (isInbox(clip.audio)) saveInbox();
+    const next = dropping ? nextUntagged(clip.audio) : null;
+    if (next) selected = next;
+    refresh();
+    play(next);
+    if (dropping) {
+      toast(`Dropped “${clip.title}”.`, false, ['Undo', () => {
+        delete clip.dropped;
+        if (isInbox(clip.audio)) saveInbox();
+        selected = clip.audio;
+        refresh();
+      }]);
+    }
   }
 
   function goNext() {
@@ -489,6 +535,7 @@
     if (/^[1-9]$/.test(e.key) && cases[e.key - 1]) tag(cases[e.key - 1]);
     else if (e.key === '0') tag('');
     else if (e.key === 'n' || e.key === 'N') goNext();
+    else if ((e.key === 'd' || e.key === 'D') && selected) toggleDrop();
     else if (e.key === '/' && selected) $('use-filter').focus();
     else if (e.key === 'Escape' && selected) { selected = null; showSelected(); }
     else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') step(1);
@@ -610,7 +657,8 @@
       const meta = [f.recording ? `recording ${f.recording}` : '', f.rel];
       let badge = null;
       if (f.dupOf) {
-        badge = note(f.dupOf.title === f.title ? 'already imported' : `already imported as “${f.dupOf.title}”`);
+        const as = f.dupOf.title === f.title ? '' : ` as “${f.dupOf.title}”`;
+        badge = note(isDropped(f.dupOf) ? `dropped before${as}` : `already imported${as}`);
         if (f.dupOf.title !== f.title) meta.push('same audio, different name');
       } else if (f.sameAs) {
         badge = note('repeat');
@@ -820,7 +868,8 @@
       const items = [];
       if (p.add.length) items.push(`Add ${p.add.length} new clip${p.add.length > 1 ? 's' : ''}`);
       if (p.edit.length) items.push(`Update the tags of ${p.edit.length} published clip${p.edit.length > 1 ? 's' : ''}`);
-      if (p.drop.length) items.push(`Remove ${p.drop.length} clip${p.drop.length > 1 ? 's' : ''} with missing audio`);
+      if (p.dropped.length) items.push(`Remove ${plural(p.dropped.length, 'dropped clip')} and ${p.dropped.length > 1 ? 'their' : 'its'} audio`);
+      if (p.missing.length) items.push(`Remove ${p.missing.length} clip${p.missing.length > 1 ? 's' : ''} with missing audio`);
       $('publish-title').textContent = onBranch() ? `Publish to ${server.branch}?` : 'Publish to GitHub Pages?';
       $('publish-target').textContent = server.branch;
       $('publish-after').textContent = onBranch()
@@ -835,12 +884,12 @@
       btn.disabled = true;
       btn.textContent = 'Publishing…';
       const p = pending();
-      const clips = live().concat(p.add.map(({ [FROM]: _, ...c }) => c)); // the import folder stays on this computer
+      const clips = live().filter((c) => !isDropped(c)).concat(p.add.map(({ [FROM]: _, ...c }) => c)); // the import folder stays on this computer
       try {
         const result = await api('POST', '/api/publish', {
           version: server.version,
           published: { dimensions: publishDims(clips), clips },
-          inbox: { clips: inbox.filter((c) => !ready(c)) },
+          inbox: { clips: inbox.filter((c) => isDropped(c) || !ready(c)) },
         });
         load(result.state);
         toast(result.message, result.pushed === false);
@@ -854,14 +903,22 @@
     };
     window.addEventListener('beforeunload', (e) => {
       const p = pending();
-      if (p.edit.length || p.drop.length) e.preventDefault(); // unpublished edits to published clips are only in this page
+      if (p.edit.length || p.missing.length || p.dropped.length) e.preventDefault(); // unpublished edits to published clips are only in this page
     });
   }
 
-  function toast(text, error) {
+  // action: optional [label, onClick], shown as a button in the toast (for Undo).
+  function toast(text, error, action) {
     const el = document.createElement('div');
     el.className = 'toast' + (error ? ' error' : '');
     el.textContent = text;
+    if (action) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = action[0];
+      b.onclick = () => { action[1](); el.remove(); };
+      el.append(' ', b);
+    }
     document.body.append(el);
     el.animate([{ opacity: 0, transform: 'translate(-50%, 12px)' }, { opacity: 1, transform: 'translate(-50%, 0)' }], { duration: 220, easing: 'ease-out' });
     setTimeout(() => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 }).finished.then(() => el.remove()), error ? 8000 : 4500);
@@ -869,7 +926,7 @@
 
   // Runs once app.js has drawn the board for the first time.
   function afterStart() {
-    const firstUntagged = inbox.find((c) => !has(c, USE));
+    const firstUntagged = inbox.find((c) => !isDropped(c) && !has(c, USE));
     selected = firstUntagged ? firstUntagged.audio : null;
     pinKeys();
     wireSide();

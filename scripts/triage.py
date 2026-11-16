@@ -196,6 +196,19 @@ def publish(body: dict) -> dict:
             d.rmdir()
             d = d.parent
 
+    # Audio of clips that left the list (dropped in the triage page) is deleted, and git stages the removal.
+    before = {c["audio"] for c in read_json(DATA, {"clips": []}).get("clips", []) if is_local(c.get("audio"))}
+    after = {c["audio"] for c in clips if is_local(c["audio"])}
+    dropped = 0
+    for audio in before - after:
+        try:
+            path = audio_file(SITE, audio)
+        except Refused:
+            continue
+        if path.is_file():
+            path.unlink()
+            dropped += 1
+
     dims = [d for d in published.get("dimensions", []) if isinstance(d, dict) and d.get("key")]
     write_json(DATA, {"dimensions": dims, "clips": clips})
     write_json(INBOX_DATA, {"clips": inbox_clips})
@@ -204,7 +217,10 @@ def publish(body: dict) -> dict:
     if not git("diff", "--cached", "--name-only", "--", "src/data/clips.json", "src/clips"):
         return {"committed": False, "message": "Nothing changed, so nothing was published."}
     added = len(moves)
-    summary = f"{added} new clip{'s' if added != 1 else ''}" if added else "clip tags"
+    parts = [f"{added} new clip{'s' if added != 1 else ''}"] if added else []
+    if dropped:
+        parts.append(f"{dropped} removed clip{'s' if dropped != 1 else ''}")
+    summary = ", ".join(parts) or "clip tags"
     git("commit", "--quiet", "-m", f"chore: publish {summary}", "--", "src/data/clips.json", "src/clips")
     commit = git("rev-parse", "--short", "HEAD")
     push = subprocess.run(["git", "push", "--quiet", "--set-upstream", "origin", branch], cwd=REPO, capture_output=True, text=True)

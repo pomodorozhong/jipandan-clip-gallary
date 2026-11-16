@@ -35,14 +35,15 @@ The page has a sidebar for the triage work and the board on the right, with **Pu
   - Keys 1–9 go to the most-used use cases when the page opens, and stay put while you work. New use cases take any free key.
   - With many use cases, only the first 15 show; **Show all** lists the rest. Type in **Filter or create…** (or press **/**) to narrow them. Enter picks the first match, or creates the typed use case when nothing matches.
   - **Game** under the selected clip changes that one clip's `source-game`, for a clip whose game differs from the rest of its import. If any clip has no game, a link above jumps to it.
-- Keys: Space plays or stops the selected clip, the arrow keys move between clips, 1–9 tag, 0 untags, N jumps to the next untagged clip, / filters use cases, Esc deselects.
+  - **Drop** (or D) moves the selected clip to a **Dropped** column at the end of the board and moves on to the next untagged clip; the message that appears offers **Undo**. A dropped new clip stays in `inbox/` and is never published; importing it again shows it as "dropped before". A dropped published clip is removed from the gallery, with its audio file, on the next Publish. Select a dropped clip and press **Restore** (or D) to bring it back.
+- Keys: Space plays or stops the selected clip, the arrow keys move between clips, 1–9 tag, 0 untags, N jumps to the next untagged clip, D drops or restores, / filters use cases, Esc deselects.
 - Published clips are on the board too, so you can change their tags. A small orange dot marks a clip that is not published or has unpublished changes.
 
 Your work on unpublished clips is saved in `inbox/` as you go, so you can close the page and continue later. Changes to clips that are already published live only in the open page until you publish them.
 
 ## Publishing
 
-**Publish** sends every clip that has both a game and a use case to GitHub: it moves their audio into `src/clips/`, adds them to `src/data/clips.json`, commits only those two paths on the branch you have checked out, and pushes that branch. Clips still missing a game or a use case stay in `inbox/`, on your computer only.
+**Publish** sends every clip that has both a game and a use case (and is not dropped) to GitHub: it moves their audio into `src/clips/`, adds them to `src/data/clips.json`, commits only those two paths on the branch you have checked out, and pushes that branch. Clips still missing a game or a use case stay in `inbox/`, on your computer only.
 
 - **On `main`**, the site updates about a minute later.
 - **On another branch**, the clips go live once that branch is merged into `main`. **Open a pull request**, under the Publish button, opens one on GitHub so someone can review the clips first.
