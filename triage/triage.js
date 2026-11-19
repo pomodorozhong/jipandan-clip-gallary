@@ -120,12 +120,30 @@
     return data;
   }
 
-  let saveTimer = null;
+  // Inbox changes are saved right away, one request at a time, so a later save never lands before an
+  // earlier one and closing the page right after a change loses nothing. Resolves to false if a save failed.
+  let saving = null;   // the running save, or null
+  let unsaved = false; // the inbox changed since the last save started (or a save failed)
   function saveInbox() {
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      api('POST', '/api/inbox', { clips: inbox }).catch((err) => toast(`Could not save the inbox: ${err.message}`, true));
-    }, 300);
+    unsaved = true;
+    if (!saving) {
+      saving = (async () => {
+        try {
+          while (unsaved) {
+            unsaved = false;
+            await api('POST', '/api/inbox', { clips: inbox });
+          }
+          return true;
+        } catch (err) {
+          unsaved = true;
+          toast(`Could not save the inbox: ${err.message}`, true);
+          return false;
+        } finally {
+          saving = null;
+        }
+      })();
+    }
+    return saving;
   }
 
   // ---------- board hooks ----------
@@ -743,11 +761,10 @@
         added.push(clip);
         server.hashes = { ...server.hashes, [f.audio]: f.hash };
       }
-      await api('POST', '/api/inbox', { clips: inbox });
     } catch (err) {
       toast(`Import stopped after ${plural(added.length, 'clip')}: ${err.message}`, true);
-      await api('POST', '/api/inbox', { clips: inbox }).catch(() => {});
     }
+    if (added.length) await saveInbox();
     $('import').close();
     resetImport();
     if (added.length) selected = added[0].audio;
@@ -883,6 +900,8 @@
       const btn = $('do-publish');
       btn.disabled = true;
       btn.textContent = 'Publishing…';
+      // A save still on its way could land after the publish and bring published clips back into the inbox.
+      while (saving) await saving;
       const p = pending();
       const clips = live().filter((c) => !isDropped(c)).concat(p.add.map(({ [FROM]: _, ...c }) => c)); // the import folder stays on this computer
       try {
@@ -903,7 +922,8 @@
     };
     window.addEventListener('beforeunload', (e) => {
       const p = pending();
-      if (p.edit.length || p.missing.length || p.dropped.length) e.preventDefault(); // unpublished edits to published clips are only in this page
+      // Unpublished edits to published clips are only in this page; inbox edits are lost only while a save is on its way.
+      if (p.edit.length || p.missing.length || p.dropped.length || saving || unsaved) e.preventDefault();
     });
   }
 
