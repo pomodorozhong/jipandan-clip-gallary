@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { freeName, safeName, urlPath } from '../triage/naming.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = path.join(REPO, 'src');                 // the published site
@@ -32,7 +33,7 @@ const MAX_UPLOAD = 200 * 1024 * 1024;
 const IMPORT_FOLDER = 'import-folder';               // inbox-only field: the export folder a clip came from
 
 const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon',
   '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.ogg': 'audio/ogg', '.oga': 'audio/ogg',
   '.opus': 'audio/ogg', '.wav': 'audio/wav', '.flac': 'audio/flac', '.webm': 'audio/webm',
@@ -50,8 +51,6 @@ const isFile = (p) => { try { return fs.statSync(p).isFile(); } catch { return f
 const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 const within = (root, p) => { const rel = path.relative(root, p); return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel)); };
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-// A file path as a URL path: %, # and ? would otherwise be read as an escape, a fragment or a query.
-const urlPath = (s) => s.replace(/%/g, '%25').replace(/#/g, '%23').replace(/\?/g, '%3F');
 
 function unquote(s) {
   try { return decodeURIComponent(s); } catch { throw new Refused(`not a valid URL path: ${JSON.stringify(s)}`); }
@@ -454,10 +453,6 @@ function makeServer(port) {
   });
 }
 
-// Characters that have a meaning in URLs. Some browsers fail to play a file whose name has them even
-// when they are escaped, so stored file names use the full-width look-alikes instead.
-const urlSafe = (s) => s.replace(/\?/g, '？').replace(/#/g, '＃').replace(/%/g, '％');
-
 // Rename inbox audio files whose names contain ?, # or %, and update their clips. Returns how many.
 function renameUnsafeInboxFiles() {
   const data = readJson(INBOX_DATA, { clips: [] });
@@ -468,14 +463,11 @@ function renameUnsafeInboxFiles() {
     if (!isLocal(c.audio)) continue;
     let old;
     try { old = audioFile(INBOX, c.audio); } catch { continue; }
-    const safe = urlSafe(path.basename(old));
+    const safe = safeName(path.basename(old));
     if (safe === path.basename(old) || !isFile(old)) continue;
-    const dot = safe.lastIndexOf('.');
-    const [stem, suffix] = [safe.slice(0, dot), safe.slice(dot)];
     const dir = path.dirname(old);
     const key = (name) => `clips/${path.relative(path.join(INBOX, 'clips'), path.join(dir, name)).split(path.sep).join('/')}`.toLowerCase();
-    let name = safe;
-    for (let n = 2; taken.has(key(name)) || fs.existsSync(path.join(dir, name)); n++) name = `${stem}-${n}${suffix}`;
+    const name = freeName(safe, (n) => taken.has(key(n)) || fs.existsSync(path.join(dir, n)));
     const renamedTo = path.join(dir, name);
     fs.renameSync(old, renamedTo);
     taken.add(key(name));

@@ -565,11 +565,6 @@
   let scan = 0;       // bumps on every new folder, so a stale check stops
 
   const nfc = (s) => s.normalize('NFC');
-  // A file name as a URL path: %, # and ? would otherwise be read as an escape, a fragment or a query.
-  const urlPath = (s) => s.replace(/%/g, '%25').replace(/#/g, '%23').replace(/\?/g, '%3F');
-  // Some browsers fail to play a file whose name has ?, # or % even when escaped, so the stored name
-  // uses full-width look-alikes. The clip's title keeps the original characters.
-  const safeName = (s) => s.replace(/\?/g, '？').replace(/#/g, '＃').replace(/%/g, '％');
   const fold = (s) => s.toLowerCase(); // macOS file names ignore case
 
   function parseName(name) {
@@ -583,13 +578,9 @@
     return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  function withSuffix(name, n) {
-    const dot = name.lastIndexOf('.');
-    return dot > 0 ? `${name.slice(0, dot)}-${n}${name.slice(dot)}` : `${name}-${n}`;
-  }
-
   // Decide where each file goes: already in the gallery, a repeat within this folder, or a free name in clips/.
   function plan() {
+    const { urlPath, safeName, freeName } = window.clipNaming; // triage/naming.mjs, shared with the server
     const hashes = server.hashes || {};
     const clipByHash = new Map();
     allClips().forEach((c) => { const h = hashes[c.audio]; if (h && !clipByHash.has(h)) clipByHash.set(h, c); });
@@ -603,8 +594,7 @@
       if (f.done) continue;
       firstWith.set(f.hash, f);
       const base = safeName(nfc(f.file.name));
-      let name = base;
-      for (let n = 2; taken.has(fold(`clips/${urlPath(name)}`)); n++) name = withSuffix(base, n);
+      const name = freeName(base, (n) => taken.has(fold(`clips/${urlPath(n)}`)));
       f.saveAs = name;
       f.renamed = name !== base;
       f.audio = `clips/${urlPath(name)}`;
