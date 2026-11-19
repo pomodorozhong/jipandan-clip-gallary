@@ -37,12 +37,12 @@ The page has a sidebar for the triage work and the board on the right, with **Pu
 
 - **Sidebar:** shows how many new clips have a use case, and the selected clip.
   - Click a chip to play and select it, or press **N** (or **Next untagged**) to jump to the next clip without a use case.
-  - Click a use case, or press its number. The clip moves into that column and the next untagged clip starts playing. **Untag** (or 0) clears it.
+  - Click a use case, or press its number, to add it to the selected clip; do it again to remove it. A clip can have several use cases and then shows up in each of those columns. The selection stays on the clip, so you can add more; press **N** or an arrow key to move on. **Untag** (or 0) clears every use case of the clip.
   - Keys 1–9 go to the most-used use cases when the page opens, and stay put while you work. New use cases take any free key.
-  - With many use cases, only the first 15 show; **Show all** lists the rest. Type in **Filter or create…** (or press **/**) to narrow them. Enter picks the first match, or creates the typed use case when nothing matches.
+  - With many use cases, only the first 15 show; **Show all** lists the rest. Type in **Filter or create…** (or press **/**) to narrow them. Enter adds the first match, or creates the typed use case when nothing matches.
   - The selected clip's game shows small under its title; click it to change that one clip's `source-game`, for a clip whose game differs from the rest of its import. A clip with no game gets a full **Game** menu under the card instead, and a link above jumps to the next such clip.
   - **Drop** (or D), on the right of the selected clip, moves the selected clip to a **Dropped** column at the end of the board and moves on to the next untagged clip; the message that appears offers **Undo**. A dropped new clip stays in `inbox/` and is never published; importing it again shows it as "dropped before". A dropped published clip is removed from the gallery, with its audio file, on the next Publish. Select a dropped clip and press **Restore** (or D) to bring it back.
-- Keys: Space plays or stops the selected clip, the arrow keys move between clips, 1–9 tag, 0 untags, N jumps to the next untagged clip, D drops or restores, / filters use cases, Esc deselects.
+- Keys: Space plays or stops the selected clip, the arrow keys move between clips, 1–9 add or remove a use case, 0 clears them, N jumps to the next untagged clip, D drops or restores, / filters use cases, Esc deselects.
 - Published clips are on the board too, so you can change their tags. A small orange dot marks a clip that is not published or has unpublished changes.
 
 Your work on unpublished clips is saved in `inbox/` as you go, so you can close the page and continue later. Changes to clips that are already published live only in the open page until you publish them.

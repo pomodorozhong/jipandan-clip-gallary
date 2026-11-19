@@ -49,7 +49,9 @@
   const first = (v) => (Array.isArray(v) ? v[0] : v) || '';
   const has = (c, key) => [].concat(c[key] ?? []).some((v) => String(v).trim());
   const ready = (c) => has(c, GAME) && has(c, USE);
-  const edited = (c) => original.get(c.audio) !== JSON.stringify(c);
+  // Key order does not count: removing a use case and adding it back leaves the clip unedited.
+  const canon = (c) => JSON.stringify(Object.keys(c).sort().map((k) => [k, c[k]]));
+  const edited = (c) => original.get(c.audio) !== canon(c);
 
   // A dropped clip stays on the board in a Dropped column. In the inbox it is kept but never published;
   // a dropped published clip is removed from the gallery, with its audio, on the next Publish.
@@ -102,7 +104,7 @@
     server = state;
     dims = (state.published.dimensions || []).filter((d) => d && d.key);
     pub = (state.published.clips || []).map((c) => ({ ...c }));
-    original = new Map(pub.map((c) => [c.audio, JSON.stringify(c)]));
+    original = new Map(pub.map((c) => [c.audio, canon(c)]));
     removed = new Set();
     inbox = (state.inbox.clips || []).map((c) => ({ ...c })); // the server renamed any ?, # or % file names at start-up
   }
@@ -293,12 +295,18 @@
   const kbd = (text) => el('kbd', '', text);
   const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-  const usesOf = (c) => [].concat(c[USE] ?? []).map(String);
-  const useCount = (u) => allClips().filter((c) => usesOf(c).includes(u)).length;
+  const usesOf = (c) => [].concat(c[USE] ?? []).map(String).filter((u) => u.trim());
+  // How many clips have each use case, counted in one pass.
+  function useCounts() {
+    const counts = new Map();
+    allClips().forEach((c) => usesOf(c).forEach((u) => counts.set(u, (counts.get(u) || 0) + 1)));
+    return counts;
+  }
 
   // The most-used use cases get keys 1–9 when the page opens, so keys don't move while you tag.
   function pinKeys() {
-    keyed = useCases().map((u, i) => [u, useCount(u), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).slice(0, KEY_SLOTS).map(([u]) => u);
+    const counts = useCounts();
+    keyed = useCases().map((u, i) => [u, counts.get(u) || 0, i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).slice(0, KEY_SLOTS).map(([u]) => u);
   }
   // Use cases created later fill free key slots; ones that no longer exist give theirs up.
   function keyedUses() {
@@ -376,7 +384,9 @@
     if (!clip || isDropped(clip)) return;
     const all = useCases();
     const keys = keyedUses();
-    const rest = all.filter((u) => !keys.includes(u)).sort((a, b) => useCount(b) - useCount(a) || a.localeCompare(b));
+    const counts = useCounts();
+    const count = (u) => counts.get(u) || 0;
+    const rest = all.filter((u) => !keys.includes(u)).sort((a, b) => count(b) - count(a) || a.localeCompare(b));
     const ordered = [...keys, ...rest];
     const raw = $('use-filter').value.trim();
     const q = raw.toLowerCase();
@@ -387,13 +397,13 @@
     const pills = shown.map((u) => {
       const at = keys.indexOf(u);
       const b = button('tag' + (mine.includes(u) ? ' on' : '') + (at < 0 ? ' nokey' : ''), at < 0 ? null : kbd(String(at + 1)), u);
-      b.title = `${plural(useCount(u), 'clip')}`;
-      b.onclick = () => tag(u);
+      b.title = `${plural(count(u), 'clip')}${mine.includes(u) ? ' · click to remove from this clip' : ''}`;
+      b.onclick = () => toggleUse(u);
       return b;
     });
     if (q && !all.some((u) => u.toLowerCase() === q)) {
       const create = button('tag new', `+ Create “${raw}”`);
-      create.onclick = () => tag(raw);
+      create.onclick = () => addUse(raw);
       pills.push(create);
     }
     if (!pills.length) pills.push(el('span', 'hint', 'No use cases yet. Type a name above to create one.'));
@@ -403,6 +413,7 @@
     more.hidden = q || ordered.length <= PILL_CAP;
     more.textContent = showAllUses ? 'Show fewer' : `Show all ${ordered.length}`;
     $('untag').hidden = !mine.length;
+    $('untag').replaceChildren(mine.length > 1 ? 'Untag all ' : 'Untag ', kbd('0'));
   }
 
   // The selected clip's game, for the odd clip whose game differs from the rest of its import.
@@ -459,7 +470,7 @@
 
   function wireSide() {
     $('more-uses').onclick = () => { showAllUses = !showAllUses; renderTagPanel(); };
-    $('untag').onclick = () => tag('');
+    $('untag').onclick = clearUses;
     const filter = $('use-filter');
     filter.oninput = renderTagPanel;
     filter.onkeydown = (e) => {
@@ -468,10 +479,10 @@
       e.preventDefault();
       const raw = filter.value.trim();
       if (!raw) return;
-      // Enter picks the exact or first matching use case, or creates the typed one when nothing matches.
+      // Enter adds the exact or first matching use case, or creates the typed one when nothing matches.
       const q = raw.toLowerCase();
       const all = useCases();
-      tag(all.find((u) => u.toLowerCase() === q) || all.find((u) => u.toLowerCase().includes(q)) || raw);
+      addUse(all.find((u) => u.toLowerCase() === q) || all.find((u) => u.toLowerCase().includes(q)) || raw);
     };
   }
 
@@ -493,20 +504,22 @@
     if (audio && board().playingAudio() !== audio) board().toggle(audio);
   }
 
-  function tag(useCase) {
+  // A clip can have several use cases. One is stored as a string and several as a list, as in
+  // docs/data-format.md. Tagging never moves the selection: N and the arrow keys do that.
+  function setUses(update) {
     const clip = selected && clipOf(selected);
     if (!clip) return;
-    if (useCase) clip[USE] = useCase;
-    else delete clip[USE];
+    const uses = update(usesOf(clip));
+    if (!uses.length) delete clip[USE];
+    else clip[USE] = uses.length === 1 ? uses[0] : uses;
     if (isInbox(clip.audio)) saveInbox();
     $('use-filter').value = '';
     if (document.activeElement === $('use-filter')) $('use-filter').blur(); // so the number keys work again
-    // Move on to the next untagged clip, in board order after this one, and play it.
-    const next = useCase ? nextUntagged(clip.audio) : null;
-    if (next) selected = next;
     refresh();
-    play(next);
   }
+  const toggleUse = (u) => setUses((uses) => (uses.includes(u) ? uses.filter((x) => x !== u) : [...uses, u]));
+  const addUse = (u) => setUses((uses) => (uses.includes(u) ? uses : [...uses, u]));
+  const clearUses = () => setUses(() => []);
 
   // Drop the selected clip (or restore a dropped one), move on to the next untagged clip, and offer Undo.
   function toggleDrop() {
@@ -557,8 +570,8 @@
     if (e.target.closest && e.target.closest('input, select, textarea, dialog')) return;
     if (document.querySelector('dialog[open]')) return;
     const cases = keyedUses();
-    if (/^[1-9]$/.test(e.key) && cases[e.key - 1]) tag(cases[e.key - 1]);
-    else if (e.key === '0') tag('');
+    if (/^[1-9]$/.test(e.key) && cases[e.key - 1]) toggleUse(cases[e.key - 1]);
+    else if (e.key === '0') clearUses();
     else if (e.key === 'n' || e.key === 'N') goNext();
     else if ((e.key === 'd' || e.key === 'D') && selected) toggleDrop();
     else if (e.key === '/' && selected) $('use-filter').focus();
