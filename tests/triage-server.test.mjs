@@ -198,6 +198,22 @@ describe('GET /api/state', () => {
   });
 });
 
+describe('GET /api/state with a bad audio path', () => {
+  test('counts the clip as missing instead of failing to load', async () => {
+    const before = fs.readFileSync(file('src', 'data', 'clips.json'));
+    const data = JSON.parse(before);
+    writeJson('src/data/clips.json', { ...data, clips: [...data.clips, { title: 'Notes', audio: 'clips/notes.txt' }, { title: 'Bad escape', audio: 'clips/100%.mp3' }] });
+    try {
+      const res = await get('/api/state');
+      assert.equal(res.status, 200);
+      const s = await res.json();
+      assert.deepEqual(s.missing, ['clips/gone.mp3', 'clips/notes.txt', 'clips/100%.mp3']);
+    } finally {
+      fs.writeFileSync(file('src', 'data', 'clips.json'), before);
+    }
+  });
+});
+
 describe('static files', () => {
   for (const [p, type] of [
     ['/', 'text/html'],
@@ -441,6 +457,35 @@ describe('POST /api/publish', () => {
     assert.ok(!fs.existsSync(file('inbox', '.publish-trash')));
   });
 
+  test('refuses a new clip whose audio file is missing', async () => {
+    const s = await state();
+    const ghost = { title: 'Ghost', audio: 'clips/ghost.mp3', 'source-game': 'A', 'use-case': 'Hurt' };
+    const dataBefore = fs.readFileSync(file('src', 'data', 'clips.json'));
+    const head = git('rev-parse', 'HEAD');
+    const res = await send('POST', '/api/publish', { version: s.version, published: { dimensions: s.published.dimensions, clips: [...s.published.clips, ghost] }, inbox: s.inbox });
+    assert.equal(res.status, 409);
+    assert.match((await res.json()).error, /“Ghost” has no audio file/);
+    assert.equal(git('rev-parse', 'HEAD'), head, 'no commit');
+    assert.deepEqual(fs.readFileSync(file('src', 'data', 'clips.json')), dataBefore);
+  });
+
+  test('a failed commit removes an inbox list that did not exist before', async () => {
+    const s = await state();
+    const inboxBefore = fs.readFileSync(file('inbox', 'clips.json'));
+    fs.rmSync(file('inbox', 'clips.json'));
+    const hook = file('.git', 'hooks', 'pre-commit');
+    fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    try {
+      const res = await send('POST', '/api/publish', { version: s.version, published: { dimensions: s.published.dimensions, clips: [s.published.clips[0]] }, inbox: { clips: [] } });
+      assert.equal(res.status, 409);
+      assert.ok(!fs.existsSync(file('inbox', 'clips.json')), 'no inbox list left behind');
+    } finally {
+      fs.rmSync(hook);
+      fs.writeFileSync(file('inbox', 'clips.json'), inboxBefore);
+    }
+    assert.deepEqual(fs.readFileSync(file('src', 'clips', 'old.mp3')), AUDIO.publishedOld, 'the dropped clip keeps its audio');
+  });
+
   test('moves ready clips out of the inbox, drops removed ones, commits only src/ and pushes', async () => {
     fs.writeFileSync(file('src', 'clips', 'stray.mp3'), audio()); // not part of this publish
     const s = await state();
@@ -483,6 +528,19 @@ describe('POST /api/publish', () => {
     const res = await get(`/gallery/clips/${enc('0602_0029_(？？？？？).mp3')}`);
     assert.equal(res.status, 200);
     assert.deepEqual(Buffer.from(await res.arrayBuffer()), AUDIO.question);
+  });
+
+  test('a new clip whose audio is already in src/clips is committed with its audio', async () => {
+    const bytes = audio();
+    fs.writeFileSync(file('src', 'clips', 'kept.mp3'), bytes); // untracked, as after a retried import
+    const s = await state();
+    const kept = { title: 'Kept', audio: 'clips/kept.mp3', 'source-game': 'A', 'use-case': ['Hurt', 'Victory'] };
+    const res = await send('POST', '/api/publish', { version: s.version, published: { dimensions: s.published.dimensions, clips: [...s.published.clips, kept] }, inbox: s.inbox });
+    const result = await res.json();
+    assert.equal(res.status, 200, JSON.stringify(result));
+    assert.equal(git('log', '-1', '--format=%s'), 'chore: publish 1 new clip');
+    assert.ok(git('show', '--name-only', '--format=', 'HEAD').split('\n').includes('src/clips/kept.mp3'), 'the audio is in the commit');
+    assert.deepEqual(readJson('src', 'data', 'clips.json').clips.at(-1)['use-case'], ['Hurt', 'Victory'], 'several use cases stay a list');
   });
 
   test('says so when nothing changed', async () => {

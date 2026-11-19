@@ -31,6 +31,9 @@ const LIVE_BRANCH = 'main';                          // the branch GitHub Pages 
 const AUDIO_SUFFIXES = new Set(['.mp3', '.m4a', '.aac', '.ogg', '.oga', '.opus', '.wav', '.flac', '.webm']);
 const MAX_UPLOAD = 200 * 1024 * 1024;
 const IMPORT_FOLDER = 'import-folder';               // inbox-only field: the export folder a clip came from
+const NETWORK_TIMEOUT = 2 * 60 * 1000;              // longest a pull or push may take
+// git must never wait for a password in the terminal: the page would hang with no way to answer.
+const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' };
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
@@ -115,12 +118,17 @@ function audioFile(base, audio) {
 
 const isLocal = (audio) => typeof audio === 'string' && audio.startsWith('clips/');
 
-function git(args, { check = true } = {}) {
-  const result = spawnSync('git', args, { cwd: REPO, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  if (check && result.status !== 0) {
-    throw new Refused(`git ${args.join(' ')} failed: ${(result.stderr || result.stdout || String(result.error || '')).trim()}`, 409);
-  }
+function git(args, { check = true, timeout } = {}) {
+  const result = spawnSync('git', args, { cwd: REPO, env: GIT_ENV, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout });
+  if (check && result.status !== 0) throw new Refused(`git ${args.join(' ')} failed: ${gitError(result)}`, 409);
   return (result.stdout || '').trim();
+}
+
+function gitError(result) {
+  if (result.error && result.error.code === 'ETIMEDOUT') {
+    return 'it did not finish within 2 minutes. If git needs a password for GitHub, run "git pull" once in a terminal and save it, then try again.';
+  }
+  return (result.stderr || result.stdout || String(result.error || '')).trim();
 }
 
 // GitHub link for opening a pull request from branch into main, or "" if origin is not on GitHub.
@@ -146,7 +154,9 @@ function cleanClip(c) {
 function state() {
   const published = readJson(DATA, { dimensions: [], clips: [] });
   const inbox = readJson(INBOX_DATA, { clips: [] });
-  const missing = (published.clips || []).filter((c) => isLocal(c.audio) && !isFile(audioFile(SITE, c.audio))).map((c) => c.audio);
+  // An audio path that is not a valid file path counts as missing, so one bad entry never stops the page loading.
+  const audioMissing = (audio) => { try { return !isFile(audioFile(SITE, audio)); } catch { return true; } };
+  const missing = (published.clips || []).filter((c) => isLocal(c.audio) && audioMissing(c.audio)).map((c) => c.audio);
   const branch = git(['branch', '--show-current'], { check: false });
   return {
     published,
@@ -182,7 +192,7 @@ function publish(body) {
   }
 
   // Bring the branch up to date first, so the push is a fast-forward. A branch never pushed has nothing to pull.
-  if (git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'], { check: false })) git(['pull', '--ff-only', '--quiet']);
+  if (git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'], { check: false })) git(['pull', '--ff-only', '--quiet'], { timeout: NETWORK_TIMEOUT });
   if (body.version !== digest(DATA)) throw new Refused('GitHub had newer clips. Reload the page to see them, then publish again.', 409);
 
   const published = body.published || {};
@@ -195,7 +205,12 @@ function publish(body) {
     seen.add(c.audio);
   }
 
+  // Every new clip's audio goes into the commit: moved in from the inbox, or already in src/clips (and
+  // then committed with it, in case git does not track it yet). A new clip without audio is refused, so
+  // the live page never lists a clip it cannot play. Clips published before are left as they are.
+  const before = new Set((readJson(DATA, { clips: [] }).clips || []).filter((c) => isLocal(c.audio)).map((c) => c.audio));
   const moves = [];
+  const kept = []; // audio of new clips that is already in src/clips
   for (const c of clips) {
     if (!isLocal(c.audio)) continue;
     const siteFile = audioFile(SITE, c.audio);
@@ -203,11 +218,13 @@ function publish(body) {
     if (isFile(inboxFile)) {
       if (fs.existsSync(siteFile)) throw new Refused(`${c.audio} is already in src/clips. Rename the inbox clip and publish again.`, 409);
       moves.push([inboxFile, siteFile]);
+    } else if (!before.has(c.audio)) {
+      if (!isFile(siteFile)) throw new Refused(`“${c.title}” has no audio file (${c.audio}). Import it again or drop it, then publish again.`, 409);
+      kept.push(siteFile);
     }
   }
 
   // Audio of clips that left the list (dropped in the triage page) is deleted, and git stages the removal.
-  const before = new Set((readJson(DATA, { clips: [] }).clips || []).filter((c) => isLocal(c.audio)).map((c) => c.audio));
   const after = new Set(clips.filter((c) => isLocal(c.audio)).map((c) => c.audio));
   const drops = [];
   for (const audio of before) {
@@ -221,7 +238,7 @@ function publish(body) {
   // goes live by accident. A dropped file git never tracked has nothing to stage.
   const rel = (p) => path.relative(REPO, p).split(path.sep).join('/');
   const tracked = new Set(drops.length ? git(['ls-files', '-z', '--', ...drops.map(rel)]).split('\0').filter(Boolean) : []);
-  const paths = ['--', rel(DATA), ...moves.map(([, dest]) => rel(dest)), ...drops.map(rel).filter((p) => tracked.has(p))];
+  const paths = ['--', rel(DATA), ...moves.map(([, dest]) => rel(dest)), ...kept.map(rel), ...drops.map(rel).filter((p) => tracked.has(p))];
 
   // Everything below is undone if a step fails before the commit lands, so a failed publish
   // (a git hook, no git identity) leaves the inbox, src/clips and clips.json as they were.
@@ -250,7 +267,7 @@ function publish(body) {
       return { committed: false, message: 'Nothing changed, so nothing was published.' };
     }
     const parts = [];
-    if (moves.length) parts.push(plural(moves.length, 'new clip'));
+    if (moves.length + kept.length) parts.push(plural(moves.length + kept.length, 'new clip'));
     if (drops.length) parts.push(plural(drops.length, 'removed clip'));
     summary = parts.join(', ') || 'clip tags';
     git(['commit', '--quiet', '-m', `chore: publish ${summary}`, ...paths]);
@@ -259,6 +276,7 @@ function publish(body) {
     if (done.staged) git(['reset', '--quiet', ...paths], { check: false });
     fs.writeFileSync(DATA, oldData);
     if (oldInbox) fs.writeFileSync(INBOX_DATA, oldInbox);
+    else fs.rmSync(INBOX_DATA, { force: true });
     for (const [kept, file] of done.trashed.reverse()) moveFile(kept, file);
     for (const [src, dest] of done.moved.reverse()) moveFile(dest, src);
     fs.rmSync(trash, { recursive: true, force: true });
@@ -273,9 +291,9 @@ function publish(body) {
       dir = path.dirname(dir);
     }
   }
-  const push = spawnSync('git', ['push', '--quiet', '--set-upstream', 'origin', branch], { cwd: REPO, encoding: 'utf8' });
+  const push = spawnSync('git', ['push', '--quiet', '--set-upstream', 'origin', branch], { cwd: REPO, env: GIT_ENV, encoding: 'utf8', timeout: NETWORK_TIMEOUT });
   if (push.status !== 0) {
-    return { committed: true, pushed: false, commit, message: `Committed ${commit}, but the push failed: ${(push.stderr || '').trim()} Fix it, then push ${branch}.` };
+    return { committed: true, pushed: false, commit, message: `Committed ${commit}, but the push failed: ${gitError(push)} Fix it, then push ${branch}.` };
   }
   const message = branch === LIVE_BRANCH
     ? `Published ${summary} (${commit}). The team's page updates in about a minute.`
