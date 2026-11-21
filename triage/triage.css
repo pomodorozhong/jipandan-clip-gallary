@@ -16,8 +16,6 @@
 .shell { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100vh; }
 .main { display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 20px 24px; overflow-y: auto; }
 .main .toolbar { gap: 8px; }
-.main .pill { min-height: 36px; font-size: 13px; }
-.main .pill select, .main .pill input { height: 28px; font-size: 13px; }
 .main .searchbox { min-height: 36px; }
 .main .searchbox input { height: 30px; font-size: 13px; }
 

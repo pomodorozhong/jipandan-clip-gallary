@@ -151,10 +151,11 @@
 
   function sortOptions() {
     return [
-      { value: 'title', label: 'Title A–Z' },
-      { value: 'title-desc', label: 'Title Z–A' },
-      { value: 'file', label: 'As listed' },
-      ...dims.map((d) => ({ value: 'dim:' + d.key, label: 'By ' + d.label.toLowerCase() })),
+      // Read after "sorted by" in the view bar.
+      { value: 'title', label: 'title A–Z' },
+      { value: 'title-desc', label: 'title Z–A' },
+      { value: 'file', label: 'file order' },
+      ...dims.map((d) => ({ value: 'dim:' + d.key, label: d.label.toLowerCase() })),
     ];
   }
 
@@ -171,7 +172,7 @@
   function buildControls() {
     const dimOptions = dims.map((d) => ({ value: d.key, label: d.label }));
     fillSelect($('columns-by'), dimOptions, state.cols);
-    fillSelect($('colour-by'), dimOptions.concat({ value: 'none', label: 'None' }), state.colour);
+    fillSelect($('colour-by'), dimOptions.concat({ value: 'none', label: 'nothing' }), state.colour);
     fillSelect($('sort-by'), sortOptions(), state.sort);
     $('search').value = state.q;
 

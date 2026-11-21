@@ -61,16 +61,21 @@
 
     <!-- The viewer's board (src/assets/app.js fills these in). -->
     <div class="main">
+      <!-- Finding clips first; how the board looks sits underneath, quieter. -->
       <header class="toolbar">
         <label class="searchbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span class="visually-hidden">Search</span><input id="search" type="search" placeholder="Search titles, games, use cases…" autocomplete="off"></label>
-        <label class="pill">Columns <select id="columns-by"></select></label>
-        <label class="pill">Colour by <select id="colour-by"></select></label>
-        <label class="pill">Sort <select id="sort-by"></select></label>
+        <div class="filters" id="filters" aria-label="Filters"></div>
       </header>
 
-      <div class="filters" id="filters" aria-label="Filters"></div>
-
-      <div class="legend-row">
+      <div class="viewbar">
+        <div class="view-settings" aria-label="View">
+          <label>Columns by <select id="columns-by"></select></label>
+          <span class="view-dot" aria-hidden="true"></span>
+          <label>coloured by <select id="colour-by"></select></label>
+          <span class="view-dot" aria-hidden="true"></span>
+          <label>sorted by <select id="sort-by"></select></label>
+        </div>
+        <span class="view-sep" aria-hidden="true"></span>
         <div class="legend" id="legend"></div>
         <span class="total" id="total" aria-live="polite"></span>
       </div>
