@@ -166,5 +166,12 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.chip.playing { border-color: var(--accent); }
+/* The playing chip fills from left to right as the clip plays, in a light tint of its play button's
+   colour, so the title stays readable. app.js sets --fill and moves --progress. */
+.chip.playing {
+  border-color: var(--accent);
+  background: linear-gradient(to right,
+    color-mix(in srgb, var(--fill, var(--accent)) 35%, var(--surface)) var(--progress, 0%),
+    var(--surface) 0);
+}
 .chip.broken { color: var(--broken); text-decoration: line-through; }
