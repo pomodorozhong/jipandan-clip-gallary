@@ -301,6 +301,7 @@ function publish(body) {
   const trash = path.join(INBOX, '.publish-trash');
   const done = { moved: [], trashed: [], staged: false };
   let summary;
+  let counts;
   let commit;
   try {
     for (const [src, dest] of moves) { moveFile(src, dest); done.moved.push([src, dest]); }
@@ -319,12 +320,13 @@ function publish(body) {
     git(['add', '-A', ...paths]);
     if (!git(['diff', '--cached', '--name-only', ...paths])) {
       fs.rmSync(trash, { recursive: true, force: true });
-      return { committed: false, message: 'Nothing changed, so nothing was published.' };
+      return { committed: false, message: 'Nothing changed, so nothing was published.', notice: { kind: 'nothing' } };
     }
     const parts = [];
     if (moves.length + kept.length) parts.push(plural(moves.length + kept.length, 'new clip'));
     if (drops.length) parts.push(plural(drops.length, 'removed clip'));
     summary = parts.join(', ') || 'clip tags';
+    counts = { added: moves.length + kept.length, removed: drops.length };
     git(['commit', '--quiet', '-m', `chore: publish ${summary}`, ...paths]);
     commit = git(['rev-parse', '--short', 'HEAD']);
   } catch (err) {
@@ -348,12 +350,18 @@ function publish(body) {
   }
   const push = spawnSync('git', ['push', '--quiet', '--set-upstream', 'origin', branch], { cwd: REPO, env: GIT_ENV, encoding: 'utf8', timeout: NETWORK_TIMEOUT });
   if (push.status !== 0) {
-    return { committed: true, pushed: false, commit, message: `Committed ${commit}, but the push failed: ${gitError(push)} Fix it, then push ${branch}.` };
+    return {
+      committed: true, pushed: false, commit,
+      message: `Committed ${commit}, but the push failed: ${gitError(push)} Fix it, then push ${branch}.`,
+      notice: { kind: 'pushFailed', commit, branch, error: gitError(push) },
+    };
   }
   const message = branch === LIVE_BRANCH
     ? `Published ${summary} (${commit}). The team's page updates in about a minute.`
     : `Pushed ${summary} to ${branch} (${commit}). They go live once ${branch} is merged into ${LIVE_BRANCH}.`;
-  return { committed: true, pushed: true, commit, message };
+  // `notice` is what happened, for the page to word in its own language; `message` is the English.
+  const notice = { kind: branch === LIVE_BRANCH ? 'live' : 'branch', ...counts, commit, branch, liveBranch: LIVE_BRANCH };
+  return { committed: true, pushed: true, commit, message, notice };
 }
 
 // ---------- HTTP ----------

@@ -11,7 +11,7 @@
   const USE = 'use-case';
   const REC = 'recording';
   const BATCH = 'batch';      // the publish a clip came in with; set by the server, renamable here
-  let dropLabel = 'Dropped';      // the board column for dropped clips; see boardClips()
+  let dropLabel = '';             // the board column for dropped clips, in the page's language; see boardClips()
   const FROM = 'import-folder'; // the export folder a clip came from; kept in the inbox only, dropped on publish
   // jipandan-clip export names: <recording>_<4+ digit clip id, maybe "-N">_<title>, maybe " (N)".
   const EXPORT_NAME = /^(.+)_(\d{4,}(?:-\d+)?)_(.+?)(?: \(\d+\))?$/;
@@ -22,6 +22,9 @@
 
   const $ = (id) => document.getElementById(id);
   const board = () => window.clipBoard;
+  // Interface text: src/assets/i18n.mjs plus this page's triage/messages.mjs, both loaded before this script.
+  const I = window.i18n;
+  const t = I.t;
 
   let server = null;     // last /api/state response
   let dims = [];         // published dimensions, plus any the triage adds
@@ -144,7 +147,7 @@
           return true;
         } catch (err) {
           unsaved = true;
-          toast(`Could not save the inbox: ${err.message}`, true);
+          toast(t('inbox.saveFailed', { error: err.message }), true);
           return false;
         } finally {
           saving = null;
@@ -185,7 +188,7 @@
       if (value === dropLabel) { section.classList.add('dropped-col'); return; }
       if (value !== board().NONE || (key !== USE && key !== GAME)) return;
       section.classList.add('untagged');
-      section.querySelector('h2').firstChild.textContent = (key === USE ? 'Untagged' : 'No game yet') + ' ';
+      section.querySelector('h2').firstChild.textContent = t(key === USE ? 'col.untagged' : 'col.noGame') + ' ';
     },
   };
 
@@ -195,8 +198,8 @@
   function boardClips() {
     const keys = boardDims().map((d) => d.key);
     const used = new Set(allClips().filter((c) => !isDropped(c)).flatMap((c) => keys.flatMap((k) => [].concat(c[k] ?? []).map(String))));
-    dropLabel = 'Dropped';
-    for (let n = 2; used.has(dropLabel); n++) dropLabel = `Dropped (${n})`;
+    dropLabel = t('col.dropped');
+    for (let n = 2; used.has(dropLabel); n++) dropLabel = t('col.dropped', { n });
     return allClips().map((c) => (isDropped(c) ? { ...c, ...Object.fromEntries(keys.map((k) => [k, dropLabel])) } : c));
   }
 
@@ -301,7 +304,8 @@
   }
   const button = (cls, ...kids) => { const b = el('button', cls, ...kids); b.type = 'button'; return b; };
   const kbd = (text) => el('kbd', '', text);
-  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  // A clip title: the team's Chinese, so marked as such for fonts and line breaks on the English page too.
+  const title = (text) => { const b = el('b', '', text); b.lang = 'zh-Hant'; return b; };
 
   const usesOf = (c) => [].concat(c[USE] ?? []).map(String).filter((u) => u.trim());
   // How many clips have each use case, counted in one pass.
@@ -344,12 +348,12 @@
     if (total) {
       const bar = el('div', 'bar', el('i'));
       bar.firstChild.style.width = `${(done / total) * 100}%`;
-      progress.replaceChildren(el('span', '', el('b', '', `${done} of ${total}`), ' new clips have a use case'), bar);
+      progress.replaceChildren(el('span', '', ...I.nodes('progress.some', { done, total })), bar);
     } else {
-      progress.replaceChildren(el('span', '', 'No new clips waiting. Use ', el('b', '', '+ Import'), ' to add some.'));
+      progress.replaceChildren(el('span', '', ...I.nodes('progress.none')));
     }
     if (needGame.length && !needGame.some((c) => c.audio === selected)) {
-      const link = button('more', `${plural(needGame.length, 'clip')} still need${needGame.length === 1 ? 's' : ''} a game →`);
+      const link = button('more', t('progress.needGame', { n: needGame.length }));
       link.onclick = () => { selected = needGame[0].audio; showSelected(); };
       progress.append(link);
     }
@@ -358,32 +362,30 @@
     if (clip) {
       const play = button('play');
       play.innerHTML = ICON_PLAY;
-      play.title = 'Play or stop (Space)';
+      play.title = t('now.play');
       play.onclick = () => board().toggle(clip.audio);
       // The game is set per folder on import and rarely changes, so it sits quietly in the subtitle;
       // only a clip without a game gets the full menu below the card.
       const hasGame = Boolean(first(clip[GAME]));
       const batch = !isInbox(clip.audio) && clip[BATCH] ? String(clip[BATCH]) : '';
       const where = el('small', '', hasGame ? gameMenu(clip) : null, hasGame ? ' · ' : '',
-        isInbox(clip.audio) ? 'not published' : 'published', batch ? ' · ' : '', batch ? batchLink(batch) : null, isDropped(clip) ? ' · dropped' : '');
-      const dropBtn = button('drop-btn', isDropped(clip) ? 'Restore' : 'Drop', kbd('D'));
-      dropBtn.title = isDropped(clip)
-        ? 'Bring this clip back from the Dropped column'
-        : isInbox(clip.audio) ? 'Move this clip to the Dropped column; it is never published' : 'Remove this clip from the gallery on the next Publish';
+        t(isInbox(clip.audio) ? 'now.notPublished' : 'now.published'), batch ? ' · ' : '', batch ? batchLink(batch) : null, isDropped(clip) ? ' · ' + t('now.dropped') : '');
+      const dropBtn = button('drop-btn', t(isDropped(clip) ? 'now.restore' : 'now.drop'), kbd('D'));
+      dropBtn.title = t(isDropped(clip) ? 'now.restoreTitle' : isInbox(clip.audio) ? 'now.dropInboxTitle' : 'now.dropPublishedTitle');
       dropBtn.onclick = toggleDrop;
       $('now').replaceChildren(
         el('div', 'now' + (isDropped(clip) ? ' is-dropped' : ''), play,
-          el('div', 'now-text', el('b', '', clip.title), el('div', 'now-meta', where, dropBtn))),
+          el('div', 'now-text', title(clip.title), el('div', 'now-meta', where, dropBtn))),
         ...(hasGame || isDropped(clip) ? [] : [gameMenu(clip)]));
     } else {
       const next = nextUntagged(null);
-      const card = el('div', 'now empty', el('b', '', 'No clip selected'));
+      const card = el('div', 'now empty', el('b', '', t('now.none')));
       if (next) {
-        const go = button('btn primary small', 'Next untagged ', kbd('N'));
+        const go = button('btn primary small', t('now.nextUntagged'), kbd('N'));
         go.onclick = goNext;
-        card.append(el('span', '', 'Click a chip on the board, or jump to the next clip without a use case.'), go);
+        card.append(el('span', '', t('now.pickOrNext')), go);
       } else {
-        card.append(el('span', '', 'Every clip has a use case. Click a chip to change one.'));
+        card.append(el('span', '', t('now.allTagged')));
       }
       $('now').replaceChildren(card);
     }
@@ -406,38 +408,38 @@
     const pills = shown.map((u) => {
       const at = keys.indexOf(u);
       const b = button('tag' + (mine.includes(u) ? ' on' : '') + (at < 0 ? ' nokey' : ''), at < 0 ? null : kbd(String(at + 1)), u);
-      b.title = `${plural(count(u), 'clip')}${mine.includes(u) ? ' · click to remove from this clip' : ''}`;
+      b.title = t('uses.count', { n: count(u) }) + (mine.includes(u) ? t('uses.removeHint') : '');
       b.onclick = () => {
         if (!renamingUse) { toggleUse(u); return; }
         renamingUse = false;
-        renameTag(USE, 'use case', u);
+        renameTag(USE, u);
         renderTagPanel();
       };
       return b;
     });
     if (q && !all.some((u) => u.toLowerCase() === q)) {
-      const create = button('tag new', `+ Create “${raw}”`);
+      const create = button('tag new', t('uses.create', { name: raw }));
       create.onclick = () => addUse(raw);
       pills.push(create);
     }
-    if (!pills.length) pills.push(el('span', 'hint', 'No use cases yet. Type a name above to create one.'));
+    if (!pills.length) pills.push(el('span', 'hint', t('uses.empty')));
     $('uses').replaceChildren(...pills);
     $('uses').classList.toggle('renaming', renamingUse);
     $('rename-uses').hidden = !all.length;
-    $('rename-uses').textContent = renamingUse ? 'Cancel rename' : 'Rename…';
+    $('rename-uses').textContent = t(renamingUse ? 'uses.cancelRename' : 'uses.rename');
     $('rename-hint').hidden = !renamingUse;
-    $('use-total').textContent = all.length ? `${all.length} total` : '';
+    $('use-total').textContent = all.length ? t('uses.total', { n: all.length }) : '';
     const more = $('more-uses');
     more.hidden = q || ordered.length <= PILL_CAP;
-    more.textContent = showAllUses ? 'Show fewer' : `Show all ${ordered.length}`;
+    more.textContent = showAllUses ? t('uses.showFewer') : t('uses.showAll', { n: ordered.length });
     $('untag').hidden = !mine.length;
-    $('untag').replaceChildren(mine.length > 1 ? 'Untag all ' : 'Untag ', kbd('0'));
+    $('untag').replaceChildren(t(mine.length > 1 ? 'uses.untagAll' : 'uses.untag'), kbd('0'));
   }
 
   // The selected clip's batch; clicking it renames that batch for every clip in it.
   function batchLink(batch) {
-    const link = button('linkish batch-link', `batch ${batch} ✎`);
-    link.title = 'Rename this batch for every clip in it (published on the next Publish)';
+    const link = button('linkish batch-link', t('now.batch', { batch }));
+    link.title = t('now.batchTitle');
     link.onclick = () => renameBatch(batch);
     return link;
   }
@@ -464,41 +466,42 @@
 
   // Ask for a new name for a use case, game or batch, and rename it on every clip. A name that is
   // already taken merges the two, after asking (batches are never merged).
-  function renameTag(key, kind, old) {
+  function renameTag(key, old) {
+    const kind = t(`kind.${key}`);
     const count = [...pub, ...inbox].filter((c) => valuesIn(c, key).includes(old)).length;
-    const name = (prompt(`Rename the ${kind} “${old}” (${plural(count, 'clip')}) to:`, old) || '').trim();
+    const name = (prompt(t('rename.ask', { kind, old, n: count }), old) || '').trim();
     if (!name || name === old) return;
     const taken = [...pub, ...inbox].some((c) => valuesIn(c, key).includes(name));
-    if (taken && key === BATCH) { toast(`There is already a batch called “${name}”.`, true); return; }
-    if (taken && !confirm(`“${name}” is already a ${kind}. Merge “${old}” into it? Every clip with “${old}” gets “${name}” instead.`)) return;
+    if (taken && key === BATCH) { toast(t('rename.batchTaken', { name }), true); return; }
+    if (taken && !confirm(t('rename.merge', { kind, old, name }))) return;
     renameValue(key, old, name);
-    toast(`${taken ? 'Merged' : 'Renamed'} “${old}” ${taken ? 'into' : 'to'} “${name}” on ${plural(count, 'clip')}.`);
+    toast(t(taken ? 'rename.merged' : 'rename.renamed', { old, name, n: count }));
     refresh();
   }
   // A renamed batch keeps its place in the Batch order, so the newest batch still comes first.
-  const renameBatch = (old) => renameTag(BATCH, 'batch', old);
+  const renameBatch = (old) => renameTag(BATCH, old);
 
   // The selected clip's game, for the odd clip whose game differs from the rest of its import.
   function gameMenu(clip) {
     const current = first(clip[GAME]);
     const select = document.createElement('select');
-    const opts = [...(current ? [] : [['', 'Pick a game…']]), ...games().map((g) => [g, g]), ['+', '+ New game…'],
-      ...(current ? [['~rename', `Rename “${current}” for every clip…`]] : [])];
+    const opts = [...(current ? [] : [['', t('game.pick')]]), ...games().map((g) => [g, g]), ['+', t('game.new')],
+      ...(current ? [['~rename', t('game.renameAll', { name: current })]] : [])];
     select.replaceChildren(...opts.map(([v, label]) => new Option(label, v)));
     select.value = current;
     select.onchange = () => {
       let value = select.value;
-      if (value === '~rename') { select.value = current; select.blur(); renameTag(GAME, 'game', current); return; }
-      if (value === '+') value = (prompt('Name of the new game') || '').trim();
+      if (value === '~rename') { select.value = current; select.blur(); renameTag(GAME, current); return; }
+      if (value === '+') value = (prompt(t('game.newName')) || '').trim();
       if (!value) { select.value = current; return; }
       clip[GAME] = value;
       if (isInbox(clip.audio)) saveInbox();
       select.blur(); // so the number keys work again
       refresh();
     };
-    select.title = 'Source game (set per folder on import)';
+    select.title = t('game.title');
     // A plain label with the menu laid invisibly over it, so it is as wide as the game's name in every browser.
-    return current ? el('span', 'game-inline', el('span', '', current, ' ▾'), select) : el('label', 'now-game needs', 'Game', select);
+    return current ? el('span', 'game-inline', el('span', '', current, ' ▾'), select) : el('label', 'now-game needs', t('game.label'), select);
   }
 
   function renderActions() {
@@ -506,30 +509,30 @@
     const n = pendingCount(p);
     const btn = $('publish');
     btn.disabled = !n || !server.canPublish;
-    btn.replaceChildren(n ? 'Publish ' : 'Nothing to publish');
-    if (n) btn.append(plural(n, 'change'));
-    btn.title = server.canPublish ? '' : 'Publishing needs a branch checked out.';
+    btn.replaceChildren(n ? t('publish.button') : t('publish.nothing'));
+    if (n) btn.append(t('publish.changes', { n }));
+    btn.title = server.canPublish ? '' : t('publish.needsBranch');
 
     const missing = live().filter((c) => server.missing.includes(c.audio));
     const rm = $('remove-missing');
     rm.hidden = !missing.length;
-    rm.textContent = `Remove ${plural(missing.length, 'clip')} with missing audio`;
+    rm.textContent = t('publish.removeMissing', { n: missing.length });
 
     $('branch').innerHTML = ICON_BRANCH;
-    $('branch').append(server.branch || 'no branch');
-    $('branch').title = 'Publish commits to this branch';
+    $('branch').append(server.branch || t('publish.noBranch'));
+    $('branch').title = t('publish.branchTitle');
     const note = $('publish-note');
-    if (!server.canPublish) note.replaceChildren('This checkout is not on a branch. You can import and tag, but Publish needs a branch checked out.');
+    if (!server.canPublish) note.replaceChildren(t('publish.noteDetached'));
     else if (onBranch()) {
-      note.replaceChildren(`Goes live once ${server.branch} is merged into ${server.liveBranch}.`);
+      note.replaceChildren(t('publish.noteBranch', { branch: server.branch, live: server.liveBranch }));
       if (server.compareUrl) {
-        const link = el('a', '', 'Open a pull request');
+        const link = el('a', '', t('publish.openPr'));
         link.href = server.compareUrl;
         link.target = '_blank';
         link.rel = 'noopener';
         note.append(' ', link);
       }
-    } else note.replaceChildren('Goes live on the team’s page about a minute after publishing.');
+    } else note.replaceChildren(t('publish.noteLive'));
   }
 
   function wireSide() {
@@ -614,10 +617,10 @@
     play(next);
     if (dropping) {
       const { audio } = clip;
-      toast(`Dropped “${clip.title}”.`, false, ['Undo', () => {
+      toast(t('drop.done', { title: clip.title }), false, [t('drop.undo'), () => {
         // Look the clip up again: a publish since then reloads every clip from the server.
         const now = clipOf(audio);
-        if (!now) { toast(`Too late to undo: “${clip.title}” was already removed by Publish.`, true); return; }
+        if (!now) { toast(t('drop.tooLate', { title: clip.title }), true); return; }
         delete now.dropped;
         if (isInbox(audio)) saveInbox();
         selected = audio;
@@ -628,7 +631,7 @@
 
   function goNext() {
     const next = nextUntagged(selected);
-    if (!next) { toast('Every clip has a use case.'); return; }
+    if (!next) { toast(t('next.none')); return; }
     selected = next;
     selectedCol = null;
     showSelected();
@@ -717,7 +720,7 @@
 
   async function showFound(folderName, files) {
     const audio = files.filter((f) => AUDIO.test(f.file.name) && !f.file.name.startsWith('.'));
-    if (!audio.length) { toast('No audio files in that folder.', true); return; }
+    if (!audio.length) { toast(t('import.noAudio'), true); return; }
     const id = ++scan;
     // Group by source folder: the export folder itself first, then its subfolders A–Z.
     const dirOf = (rel) => rel.slice(0, rel.lastIndexOf('/') + 1);
@@ -749,7 +752,7 @@
       play.type = 'button';
       play.className = 'play' + (previewing === f ? ' on' : '');
       play.innerHTML = previewing === f ? ICON_STOP : ICON_PLAY;
-      play.title = 'Play';
+      play.title = t('import.play');
       play.onclick = () => {
         if (previewing === f) { preview.pause(); previewing = null; }
         else {
@@ -767,20 +770,22 @@
       box.disabled = f.done || Boolean(checking);
       box.onchange = () => { f.checked = box.checked; summary(); };
       const note = (text, cls = '') => el('span', 'note' + (cls ? ` ${cls}` : ''), text);
-      const meta = [f.recording ? `recording ${f.recording}` : '', f.rel];
+      const meta = [f.recording ? t('import.recording', { name: f.recording }) : '', f.rel];
       let badge = null;
       if (f.dupOf) {
-        const as = f.dupOf.title === f.title ? '' : ` as “${f.dupOf.title}”`;
-        badge = note(isDropped(f.dupOf) ? `dropped before${as}` : `already imported${as}`);
-        if (f.dupOf.title !== f.title) meta.push('same audio, different name');
+        const as = f.dupOf.title === f.title ? '' : t('import.as', { title: f.dupOf.title });
+        badge = note(t(isDropped(f.dupOf) ? 'import.droppedBefore' : 'import.already') + as);
+        if (f.dupOf.title !== f.title) meta.push(t('import.renamedAudio'));
       } else if (f.sameAs) {
-        badge = note('repeat');
-        meta.push(`same audio as ${f.sameAs.rel}`);
+        badge = note(t('import.repeat'));
+        meta.push(t('import.sameAs', { rel: f.sameAs.rel }));
       } else if (f.renamed) {
-        badge = note(`saved as ${f.saveAs}`, 'renamed');
-        meta.push('a different clip already has this name');
+        badge = note(t('import.savedAs', { name: f.saveAs }), 'renamed');
+        meta.push(t('import.nameTaken'));
       }
-      const text = el('span', '', el('span', 't', f.title), badge, document.createElement('br'), el('span', 'meta', meta.filter(Boolean).join(' · ')));
+      const name = el('span', 't', f.title);
+      name.lang = 'zh-Hant';
+      const text = el('span', '', name, badge, document.createElement('br'), el('span', 'meta', meta.filter(Boolean).join(' · ')));
       label.append(box, text);
       li.append(play, label);
       return [...head, li];
@@ -795,16 +800,16 @@
     const repeats = found.filter((f) => f.sameAs).length;
     const btn = $('do-import');
     if (checking) {
-      $('found-summary').textContent = `Checking ${checking} of ${found.length} files…`;
+      $('found-summary').textContent = t('import.checking', { i: checking, n: found.length });
       btn.disabled = true;
-      btn.textContent = 'Import selected';
+      btn.textContent = t('import.selected');
       return;
     }
-    const parts = [`${plural(found.length, 'clip')} found`, `${found.length - imported - repeats} new`, `${imported} already imported`];
-    if (repeats) parts.push(plural(repeats, 'repeat'));
+    const parts = [t('import.found', { n: found.length }), t('import.new', { n: found.length - imported - repeats }), t('import.imported', { n: imported })];
+    if (repeats) parts.push(t('import.repeats', { n: repeats }));
     $('found-summary').textContent = found.length ? parts.join(' · ') : '';
     btn.disabled = !n;
-    btn.textContent = n ? `Import ${plural(n, 'clip')}` : 'Import selected';
+    btn.textContent = n ? t('import.importN', { n }) : t('import.selected');
   }
 
   function resetImport() {
@@ -848,7 +853,7 @@
     const added = [];
     try {
       for (const [i, f] of picked.entries()) {
-        btn.textContent = `Importing ${i + 1} of ${picked.length}…`;
+        btn.textContent = t('import.importing', { i: i + 1, n: picked.length });
         await api('PUT', `/api/upload?audio=${encodeURIComponent(f.audio)}`, f.file, true);
         const clip = { title: f.title, audio: f.audio, [FROM]: f.folder };
         if (f.recording) clip[REC] = f.recording;
@@ -857,7 +862,7 @@
         server.hashes = { ...server.hashes, [f.audio]: f.hash };
       }
     } catch (err) {
-      toast(`Import stopped after ${plural(added.length, 'clip')}: ${err.message}`, true);
+      toast(t('import.stopped', { n: added.length, error: err.message }), true);
     }
     if (added.length) await saveInbox();
     $('import').close();
@@ -873,14 +878,14 @@
 
   function gameOptions(select, placeholder) {
     const keep = select.value;
-    select.replaceChildren(new Option(placeholder, ''), ...games().map((g) => new Option(g, g)), new Option('+ New game…', '+'));
+    select.replaceChildren(new Option(placeholder, ''), ...games().map((g) => new Option(g, g)), new Option(t('game.new'), '+'));
     select.value = [...select.options].some((o) => o.value === keep && keep !== '+') ? keep : '';
   }
 
   // "+ New game…" asks for a name and adds it to every menu; returns false when cancelled.
   function pickNewGame(select) {
     if (select.value !== '+') return true;
-    const name = (prompt('Name of the new game') || '').trim();
+    const name = (prompt(t('game.newName')) || '').trim();
     if (!name) { select.value = ''; return false; }
     for (const s of [$('games-all'), ...gameRows.map((r) => r.select)]) {
       if (![...s.options].some((o) => o.value === name)) s.insertBefore(new Option(name, name), s.lastElementChild);
@@ -897,17 +902,17 @@
     });
     gameRows = [...byFolder].map(([folder, list]) => {
       const select = document.createElement('select');
-      select.setAttribute('aria-label', `Game for ${folder}`);
-      gameOptions(select, 'Pick a game…');
+      select.setAttribute('aria-label', t('games.for', { folder }));
+      gameOptions(select, t('game.pick'));
       const names = list.map((c) => c.title);
       const sample = names.slice(0, 3).join(', ') + (names.length > 3 ? ', …' : '');
-      const row = el('div', 'gf', el('div', 'name', el('code', '', folder), el('small', '', `${plural(list.length, 'clip')} · ${sample}`)), select);
+      const row = el('div', 'gf', el('div', 'name', el('code', '', folder), el('small', '', t('games.row', { n: list.length, sample }))), select);
       select.onchange = () => { pickNewGame(select); gamesLeft(); };
       return { folder, clips: list, select, row };
     });
     gameOptions($('games-all'), '—');
     $('games-all').value = '';
-    $('games-intro').textContent = `${plural(clips.length, 'clip')} imported. Every clip in a folder gets that folder's game. You can change one clip's game later in the sidebar.`;
+    $('games-intro').textContent = t('games.intro', { n: clips.length });
     $('games-list').replaceChildren(...gameRows.map((r) => r.row));
     gamesLeft();
     $('import-games').showModal();
@@ -916,7 +921,7 @@
   function gamesLeft() {
     gameRows.forEach((r) => r.row.classList.toggle('needs', !r.select.value));
     const n = gameRows.filter((r) => !r.select.value).length;
-    $('games-left').textContent = n ? `${plural(n, 'folder')} still need${n === 1 ? 's' : ''} a game` : 'Every folder has a game';
+    $('games-left').textContent = n ? t('games.left', { n }) : t('games.allSet');
   }
 
   function saveGames() {
@@ -958,7 +963,7 @@
       e.preventDefault();
       drop.classList.remove('over');
       const entry = [...e.dataTransfer.items].map((i) => i.webkitGetAsEntry && i.webkitGetAsEntry()).find((x) => x && x.isDirectory);
-      if (!entry) { toast('Drop a folder, not single files.', true); return; }
+      if (!entry) { toast(t('import.notFolder'), true); return; }
       showFound(entry.name, await readFolder(entry));
     };
     $('do-import').onclick = doImport;
@@ -978,15 +983,13 @@
     $('publish').onclick = () => {
       const p = pending();
       const items = [];
-      if (p.add.length) items.push(`Add ${p.add.length} new clip${p.add.length > 1 ? 's' : ''}`);
-      if (p.edit.length) items.push(`Update the tags of ${p.edit.length} published clip${p.edit.length > 1 ? 's' : ''}`);
-      if (p.dropped.length) items.push(`Remove ${plural(p.dropped.length, 'dropped clip')} and ${p.dropped.length > 1 ? 'their' : 'its'} audio`);
-      if (p.missing.length) items.push(`Remove ${p.missing.length} clip${p.missing.length > 1 ? 's' : ''} with missing audio`);
-      $('publish-title').textContent = onBranch() ? `Publish to ${server.branch}?` : 'Publish to GitHub Pages?';
-      $('publish-target').textContent = server.branch;
-      $('publish-after').textContent = onBranch()
-        ? ` The clips go live once it is merged into ${server.liveBranch}.`
-        : ' The team\'s page updates about a minute later.';
+      if (p.add.length) items.push(t('publish.add', { n: p.add.length }));
+      if (p.edit.length) items.push(t('publish.edit', { n: p.edit.length }));
+      if (p.dropped.length) items.push(t('publish.drop', { n: p.dropped.length }));
+      if (p.missing.length) items.push(t('publish.missing', { n: p.missing.length }));
+      $('publish-title').textContent = onBranch() ? t('publish.titleBranch', { branch: server.branch }) : t('publish.titleLive');
+      $('publish-what').replaceChildren(...I.nodes('publish.what', { branch: server.branch }),
+        t(onBranch() ? 'publish.afterBranch' : 'publish.afterLive', { live: server.liveBranch }), t('publish.untaggedStay'));
       $('publish-list').replaceChildren(...items.map((t) => { const li = document.createElement('li'); li.textContent = t; return li; }));
       $('confirm-publish').showModal();
     };
@@ -994,7 +997,7 @@
     $('do-publish').onclick = async () => {
       const btn = $('do-publish');
       btn.disabled = true;
-      btn.textContent = 'Publishing…';
+      btn.textContent = t('publish.publishing');
       // A save still on its way could land after the publish and bring published clips back into the inbox.
       while (saving) await saving;
       const p = pending();
@@ -1006,12 +1009,12 @@
           inbox: { clips: inbox.filter((c) => isDropped(c) || !ready(c)) },
         });
         load(result.state);
-        toast(result.message, result.pushed === false, ['Preview gallery', () => window.open('/gallery/', '_blank', 'noopener')]);
+        toast(publishedText(result), result.pushed === false, [t('publish.preview'), () => window.open('/gallery/', '_blank', 'noopener')]);
       } catch (err) {
-        toast(`Not published: ${err.message}`, true);
+        toast(t('publish.failed', { error: err.message }), true);
       }
       btn.disabled = false;
-      btn.textContent = 'Publish';
+      btn.textContent = t('publish.confirm');
       $('confirm-publish').close();
       refresh();
     };
@@ -1020,6 +1023,15 @@
       // Unpublished edits to published clips are only in this page; inbox edits are lost only while a save is on its way.
       if (p.edit.length || p.missing.length || p.dropped.length || saving || unsaved) e.preventDefault();
     });
+  }
+
+  // What Publish did, in the page's language. The server sends what happened as `notice`
+  // (scripts/triage.mjs), and its English `message` for anything older or unexpected.
+  function publishedText(result) {
+    const n = result.notice;
+    if (!n) return result.message;
+    const vars = { ...n, live: n.liveBranch, summary: t('publish.summary', n) };
+    return t(`publish.done.${n.kind}`, vars);
   }
 
   // action: optional [label, onClick], shown as a button in the toast (for Undo).
@@ -1038,6 +1050,13 @@
     el.animate([{ opacity: 0, transform: 'translate(-50%, 12px)' }, { opacity: 1, transform: 'translate(-50%, 0)' }], { duration: 220, easing: 'ease-out' });
     setTimeout(() => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 }).finished.then(() => el.remove()), error ? 8000 : 4500);
   }
+
+  // app.js redraws the board when the language changes; the sidebar and an open import list follow.
+  window.clipBoardHooks.onLangChange = () => {
+    refresh(false);
+    if (found.length) renderFound();
+    if (gameRows.length) gamesLeft();
+  };
 
   // Runs once app.js has drawn the board for the first time.
   function afterStart() {

@@ -49,11 +49,16 @@ export function fromParams(params, keys) {
 }
 
 // The chip's text: [field part, values part], such as ["Use case: ", "Victory, Defeat +2"].
-export function chipText(label, f) {
-  const list = f.values;
-  const shown = list.length <= 2 ? list.join(', ') : `${list[0]}, ${list[1]} +${list.length - 2}`;
-  return [label + (f.not ? ' is not ' : ': '), shown || '…'];
+// `text` gives the words for "is not" and the separators; `show` turns a value into its displayed text.
+export function chipText(label, f, text = {}, show = (v) => v) {
+  const t = { ...DEFAULT_TEXT, ...text };
+  const list = f.values.map(show);
+  const shown = list.length <= 2 ? list.join(t.list) : `${list[0]}${t.list}${list[1]} +${list.length - 2}`;
+  return [label + (f.not ? ` ${t.isNot} ` : t.colon), shown || '…'];
 }
+
+// The bar's English text. A page in another language passes its own as `options.text`.
+export const DEFAULT_TEXT = { add: '+ Filter', clear: 'Clear all', remove: 'Remove filter', is: 'is', isNot: 'is not', empty: 'No values', done: 'Done', colon: ': ', list: ', ' };
 
 // ---------- the bar ----------
 
@@ -69,11 +74,13 @@ let uid = 0;
  *   count:    (key, value) => number           optional: rows that value would show, given the other filters
  *   filters:  { key: { not, values } }         optional: starting filters
  *   onChange: (filters) => void                called after every change, with a fresh copy
- *   text:     optional labels: add, clear, remove, is, isNot, empty, done
+ *   display:  (key, value) => string           optional: a value's displayed text (the value itself by default)
+ *   text:     optional labels: add, clear, remove, is, isNot, empty, done, colon, list (see DEFAULT_TEXT)
  * returns { get(), set(filters), refresh(), close() }
  */
 export function createFilterChips(container, options) {
-  const t = { add: '+ Filter', clear: 'Clear all', remove: 'Remove filter', is: 'is', isNot: 'is not', empty: 'No values', done: 'Done', ...options.text };
+  const t = { ...DEFAULT_TEXT, ...options.text };
+  const show = (key) => (v) => (options.display ? options.display(key, v) : v);
   const id = 'fc' + ++uid;
   let filters = clone(options.filters || {});
   let order = Object.keys(filters).filter((k) => filters[k].values.length); // chips in the order they were added
@@ -122,7 +129,7 @@ export function createFilterChips(container, options) {
         openBtn.disabled = true;
         chip.classList.add('fc-flag');
       } else {
-        const [a, b] = chipText(fld.label, f);
+        const [a, b] = chipText(fld.label, f, t, show(fld.key));
         openBtn.append(make('span', 'fc-field', a), make('span', 'fc-values', b));
         openBtn.setAttribute('aria-haspopup', 'true');
         openBtn.setAttribute('aria-expanded', String(open === key));
@@ -200,7 +207,7 @@ export function createFilterChips(container, options) {
         update();
       };
       const n = make('small', 'fc-count'); n.dataset.value = v;
-      lab.append(cb, make('span', null, v), n);
+      lab.append(cb, make('span', null, show(fld.key)(v)), n);
       list.append(lab);
     }
     menu.append(list);
@@ -217,7 +224,7 @@ export function createFilterChips(container, options) {
       const slot = menu.parentElement;
       const chip = slot.querySelector('.fc-chip');
       chip.classList.toggle('fc-not', f.not);
-      const [a, b] = chipText(fld.label, f);
+      const [a, b] = chipText(fld.label, f, t, show(fld.key));
       chip.querySelector('.fc-field').textContent = a;
       chip.querySelector('.fc-values').textContent = b;
       seg.querySelectorAll('button').forEach((b2, i) => b2.setAttribute('aria-pressed', String(f.not === (i === 1))));

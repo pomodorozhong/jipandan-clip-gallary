@@ -34,6 +34,16 @@ Why: the team wants to group and sort by more than one dimension (source game an
 
 Colour assignment is built from all clips, not the filtered set, so a value keeps its colour while filtering. The palette has 10 colours and repeats after that.
 
+## Interface in Traditional Chinese, English as the fallback (2026-11-22)
+
+Both pages show their interface in Traditional Chinese (zh-Hant), with a **中文 | EN** switch each browser remembers ([#9](https://github.com/pomodorozhong/jipandan-clip-gallary/issues/9)). The clips, the use cases and the team are Chinese, and the English controls sat oddly beside them.
+
+- zh-Hant is the default for everyone, not only for browsers that ask for Chinese, because the team is Chinese whatever their browser says.
+- Built-in dimension names are translated in the message table by key (`dim.use-case` and so on), not in `clips.json`, so the data format and Publish stay as they were; `clips.json` keeps its English `label` as the fallback for dimensions added later. Per-language labels in the JSON were the other option.
+- Switching redraws in place instead of reloading, so the view, the selected clip, playback and unpublished triage work all stay.
+- The triage server reports what Publish did as a `notice` the page words in its language; its refusals and git errors stay in English, since they are rare and mostly read when debugging.
+- No i18n library: two languages and a few hundred strings fit in plain modules, and the site has no build step.
+
 ## Clips come in through a local triage page (2026-11-16)
 
 New clips are imported, tagged and published from a triage page that runs only on the project lead's computer ([triage/](../triage/), served by [scripts/triage.mjs](../scripts/triage.mjs), started with `npm run triage`). It grew out of `clip_picker.py`, an untracked local page in the jipandan-clip repo that listed exported MP3s, played them, and copied a selection to the Desktop. A first version was a command-line import script; it was replaced before merging because the lead wanted to pick, listen and tag in a GUI, without a terminal.
