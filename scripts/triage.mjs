@@ -31,7 +31,7 @@ const LIVE_BRANCH = 'main';                          // the branch GitHub Pages 
 const AUDIO_SUFFIXES = new Set(['.mp3', '.m4a', '.aac', '.ogg', '.oga', '.opus', '.wav', '.flac', '.webm']);
 const MAX_UPLOAD = 200 * 1024 * 1024;
 const IMPORT_FOLDER = 'import-folder';               // inbox-only field: the export folder a clip came from
-const WAVE = 'wave';                                 // the publish a clip came in with: its date, renamable in the page
+const BATCH = 'batch';                               // the publish a clip came in with: its date, renamable in the page
 const NETWORK_TIMEOUT = 2 * 60 * 1000;              // longest a pull or push may take
 // git must never wait for a password in the terminal: the page would hang with no way to answer.
 const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' };
@@ -59,18 +59,34 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const pad = (n) => String(n).padStart(2, '0');
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 
-// Give every new clip today's wave, and put that wave first in the Wave dimension's order, so the
-// board and the gallery list the newest wave first. Clips published before keep their wave.
-function stampWave(dims, newClips) {
+// Give every new clip today's batch, and put that batch first in the Batch dimension's order, so the
+// board and the gallery list the newest batch first. Clips published before keep their batch.
+function stampBatch(dims, newClips) {
   if (!newClips.length) return dims;
-  const wave = today();
-  for (const c of newClips) c[WAVE] = wave;
+  const batch = today();
+  for (const c of newClips) c[BATCH] = batch;
   const out = dims.map((d) => ({ ...d }));
-  let dim = out.find((d) => d.key === WAVE);
-  if (!dim) out.push(dim = { key: WAVE, label: 'Wave', defaultSort: true });
-  const order = (Array.isArray(dim.order) ? dim.order : []).map(String).filter((v) => v !== wave);
-  dim.order = [wave, ...order];
+  let dim = out.find((d) => d.key === BATCH);
+  if (!dim) out.push(dim = { key: BATCH, label: 'Batch', defaultSort: true });
+  const order = (Array.isArray(dim.order) ? dim.order : []).map(String).filter((v) => v !== batch);
+  dim.order = [batch, ...order];
   return out;
+}
+
+// "Wave" was renamed "Batch". Data published before has a `wave` field and dimension: read them as
+// `batch`, so the page shows Batch and the next publish writes it. A list that already has a batch is left alone.
+function batchFromWave(data) {
+  const dims = Array.isArray(data.dimensions) ? data.dimensions : [];
+  if (dims.some((d) => d && d.key === BATCH) || !dims.some((d) => d && d.key === 'wave')) return data;
+  return {
+    ...data,
+    dimensions: dims.map((d) => (d && d.key === 'wave' ? { ...d, key: BATCH, label: !d.label || d.label === 'Wave' ? 'Batch' : d.label } : d)),
+    clips: (data.clips || []).map((c) => {
+      if (!c || typeof c !== 'object' || !('wave' in c)) return c;
+      const { wave, ...rest } = c;
+      return { ...rest, [BATCH]: wave };
+    }),
+  };
 }
 
 function unquote(s) {
@@ -179,7 +195,7 @@ function cleanClip(c) {
 }
 
 function state() {
-  const published = readJson(DATA, { dimensions: [], clips: [] });
+  const published = batchFromWave(readJson(DATA, { dimensions: [], clips: [] }));
   const inbox = readJson(INBOX_DATA, { clips: [] });
   // An audio path that is not a valid file path counts as missing, so one bad entry never stops the page loading.
   const audioMissing = (audio) => { try { return !isFile(audioFile(SITE, audio)); } catch { return true; } };
@@ -231,7 +247,7 @@ function publish(body) {
   }
   if (body.version !== digest(DATA)) throw new Refused('GitHub had newer clips. Reload the page to see them, then publish again.', 409);
 
-  const published = body.published || {};
+  const published = batchFromWave(body.published || {});
   const clips = (published.clips || []).map(cleanClip);
   for (const c of clips) delete c[IMPORT_FOLDER]; // where a clip was imported from only matters while it waits in the inbox
   const inboxClips = ((body.inbox || {}).clips || []).map(cleanClip);
@@ -295,7 +311,7 @@ function publish(body) {
       done.trashed.push([kept, file]);
     }
     const declared = (published.dimensions || []).filter((d) => d && typeof d === 'object' && d.key);
-    const dims = stampWave(declared, clips.filter((c) => !listed.has(c.audio)));
+    const dims = stampBatch(declared, clips.filter((c) => !listed.has(c.audio)));
     writeJson(DATA, { dimensions: dims, clips });
     writeJson(INBOX_DATA, { clips: inboxClips });
 

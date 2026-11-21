@@ -10,7 +10,7 @@
   const GAME = 'source-game';
   const USE = 'use-case';
   const REC = 'recording';
-  const WAVE = 'wave';        // the publish a clip came in with; set by the server, renamable here
+  const BATCH = 'batch';      // the publish a clip came in with; set by the server, renamable here
   let dropLabel = 'Dropped';      // the board column for dropped clips; see boardClips()
   const FROM = 'import-folder'; // the export folder a clip came from; kept in the inbox only, dropped on publish
   // jipandan-clip export names: <recording>_<4+ digit clip id, maybe "-N">_<title>, maybe " (N)".
@@ -363,9 +363,9 @@
       // The game is set per folder on import and rarely changes, so it sits quietly in the subtitle;
       // only a clip without a game gets the full menu below the card.
       const hasGame = Boolean(first(clip[GAME]));
-      const wave = !isInbox(clip.audio) && clip[WAVE] ? String(clip[WAVE]) : '';
+      const batch = !isInbox(clip.audio) && clip[BATCH] ? String(clip[BATCH]) : '';
       const where = el('small', '', hasGame ? gameMenu(clip) : null, hasGame ? ' · ' : '',
-        isInbox(clip.audio) ? 'not published' : 'published', wave ? ' · ' : '', wave ? waveLink(wave) : null, isDropped(clip) ? ' · dropped' : '');
+        isInbox(clip.audio) ? 'not published' : 'published', batch ? ' · ' : '', batch ? batchLink(batch) : null, isDropped(clip) ? ' · dropped' : '');
       const dropBtn = button('drop-btn', isDropped(clip) ? 'Restore' : 'Drop', kbd('D'));
       dropBtn.title = isDropped(clip)
         ? 'Bring this clip back from the Dropped column'
@@ -434,11 +434,11 @@
     $('untag').replaceChildren(mine.length > 1 ? 'Untag all ' : 'Untag ', kbd('0'));
   }
 
-  // The selected clip's wave; clicking it renames that wave for every clip in it.
-  function waveLink(wave) {
-    const link = button('linkish wave-link', `wave ${wave} ✎`);
-    link.title = 'Rename this wave for every clip in it (published on the next Publish)';
-    link.onclick = () => renameWave(wave);
+  // The selected clip's batch; clicking it renames that batch for every clip in it.
+  function batchLink(batch) {
+    const link = button('linkish batch-link', `batch ${batch} ✎`);
+    link.title = 'Rename this batch for every clip in it (published on the next Publish)';
+    link.onclick = () => renameBatch(batch);
     return link;
   }
 
@@ -462,21 +462,21 @@
     if (inboxChanged) saveInbox();
   }
 
-  // Ask for a new name for a use case, game or wave, and rename it on every clip. A name that is
-  // already taken merges the two, after asking (waves are never merged).
+  // Ask for a new name for a use case, game or batch, and rename it on every clip. A name that is
+  // already taken merges the two, after asking (batches are never merged).
   function renameTag(key, kind, old) {
     const count = [...pub, ...inbox].filter((c) => valuesIn(c, key).includes(old)).length;
     const name = (prompt(`Rename the ${kind} “${old}” (${plural(count, 'clip')}) to:`, old) || '').trim();
     if (!name || name === old) return;
     const taken = [...pub, ...inbox].some((c) => valuesIn(c, key).includes(name));
-    if (taken && key === WAVE) { toast(`There is already a wave called “${name}”.`, true); return; }
+    if (taken && key === BATCH) { toast(`There is already a batch called “${name}”.`, true); return; }
     if (taken && !confirm(`“${name}” is already a ${kind}. Merge “${old}” into it? Every clip with “${old}” gets “${name}” instead.`)) return;
     renameValue(key, old, name);
     toast(`${taken ? 'Merged' : 'Renamed'} “${old}” ${taken ? 'into' : 'to'} “${name}” on ${plural(count, 'clip')}.`);
     refresh();
   }
-  // A renamed wave keeps its place in the Wave order, so the newest wave still comes first.
-  const renameWave = (old) => renameTag(WAVE, 'wave', old);
+  // A renamed batch keeps its place in the Batch order, so the newest batch still comes first.
+  const renameBatch = (old) => renameTag(BATCH, 'batch', old);
 
   // The selected clip's game, for the odd clip whose game differs from the rest of its import.
   function gameMenu(clip) {

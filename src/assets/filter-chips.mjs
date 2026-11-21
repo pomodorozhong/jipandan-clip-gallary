@@ -62,7 +62,9 @@ let uid = 0;
 /**
  * Render a filter bar into `container`.
  * options:
- *   fields:   [{ key, label }]                 fields offered under "+ Filter"
+ *   fields:   [{ key, label, flag? }]          fields offered under "+ Filter". A field with `flag` is an
+ *                                              on/off filter (such as "★ Starred"): picking it filters
+ *                                              to rows whose value is `flag`, and its chip shows only the label.
  *   values:   (key) => string[]                a field's values, in display order
  *   count:    (key, value) => number           optional: rows that value would show, given the other filters
  *   filters:  { key: { not, values } }         optional: starting filters
@@ -114,11 +116,18 @@ export function createFilterChips(container, options) {
       const slot = make('div', 'fc-slot'); slot.dataset.key = key;
       const chip = make('span', 'fc-chip' + (f.not ? ' fc-not' : ''));
       const openBtn = make('button', 'fc-open'); openBtn.type = 'button';
-      const [a, b] = chipText(fld.label, f);
-      openBtn.append(make('span', 'fc-field', a), make('span', 'fc-values', b));
-      openBtn.setAttribute('aria-haspopup', 'true');
-      openBtn.setAttribute('aria-expanded', String(open === key));
-      openBtn.onclick = (e) => { e.stopPropagation(); if (open === key) close(key); else { open = key; prune(); draw(); focusMenu(); } };
+      if (fld.flag != null) {
+        // An on/off filter has nothing to edit: the chip is its label, and ✕ turns it off.
+        openBtn.append(make('span', 'fc-values', fld.label));
+        openBtn.disabled = true;
+        chip.classList.add('fc-flag');
+      } else {
+        const [a, b] = chipText(fld.label, f);
+        openBtn.append(make('span', 'fc-field', a), make('span', 'fc-values', b));
+        openBtn.setAttribute('aria-haspopup', 'true');
+        openBtn.setAttribute('aria-expanded', String(open === key));
+        openBtn.onclick = (e) => { e.stopPropagation(); if (open === key) close(key); else { open = key; prune(); draw(); focusMenu(); } };
+      }
       const rm = make('button', 'fc-remove', '✕'); rm.type = 'button';
       rm.setAttribute('aria-label', `${t.remove}: ${fld.label}`);
       rm.onclick = (e) => { e.stopPropagation(); delete filters[key]; order = order.filter((k) => k !== key); open = null; draw(); changed(); bar.querySelector('.fc-add').focus(); };
@@ -151,9 +160,15 @@ export function createFilterChips(container, options) {
     if (!left.length) menu.append(make('p', 'fc-note', t.empty));
     for (const fld of left) {
       const b = make('button', 'fc-item'); b.type = 'button';
-      const n = options.values(fld.key).length;
+      const flag = fld.flag != null ? String(fld.flag) : null;
+      // A field shows how many values it has; an on/off filter shows how many rows it would keep.
+      const n = flag != null ? (options.count ? options.count(fld.key, flag) : '') : options.values(fld.key).length;
       b.append(make('span', null, fld.label), make('small', null, String(n)));
-      b.onclick = () => { filters[fld.key] = { not: false, values: [] }; order.push(fld.key); open = fld.key; draw(); focusMenu(); };
+      b.onclick = () => {
+        order.push(fld.key);
+        if (flag != null) { filters[fld.key] = { not: false, values: [flag] }; open = null; draw(); changed(); bar.querySelector('.fc-add').focus(); return; }
+        filters[fld.key] = { not: false, values: [] }; open = fld.key; draw(); focusMenu();
+      };
       menu.append(b);
     }
     return menu;

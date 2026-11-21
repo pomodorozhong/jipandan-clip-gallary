@@ -7,6 +7,8 @@
   --link: #3b3fb8;
   --accent: #e8542a;
   --broken: #9b9db8;
+  --line: #d3d6f3;   /* hairlines and quiet borders */
+  --faint: #8285a8;  /* placeholders and hints */
 }
 
 * { box-sizing: border-box; }
@@ -19,70 +21,134 @@ body {
 }
 
 .page {
-  padding: 28px 24px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-/* Toolbar */
+/* Top bar. One height and one round shape for every control on the search card, two text sizes. */
 .toolbar {
+  --control: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* The search card: search, + Filter and the count, the ways to find clips */
+.findbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(29, 31, 58, .06), 0 6px 18px rgba(29, 31, 58, .06);
 }
-.pill {
+.searchbox {
+  flex: 1 1 280px;
+  max-width: 380px;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 0 6px 0 14px;
-  border-radius: 999px;
-  background: var(--surface);
-  font-weight: 500;
-}
-.pill select,
-.pill input {
-  height: 34px;
-  border: 0;
+  height: var(--control);
+  padding: 0 14px;
+  border: 1px solid transparent;
   border-radius: 999px;
   background: var(--bg);
-  padding: 0 10px;
-  font: inherit;
+  cursor: text;
+}
+.searchbox:hover { border-color: var(--line); }
+.searchbox:focus-within { border-color: var(--link); background: var(--surface); box-shadow: 0 0 0 3px rgba(59, 63, 184, .16); }
+.searchbox svg { flex: none; width: 16px; height: 16px; fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; }
+.searchbox input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: 400 14px Inter, system-ui, sans-serif;
   color: var(--ink);
 }
-.pill input { width: 160px; }
+.searchbox input::placeholder { color: var(--faint); }
+.searchbox kbd { flex: none; padding: 1px 6px; border: 1px solid var(--line); border-radius: 6px; font: 500 11px Inter, system-ui, sans-serif; color: var(--faint); }
+.searchbox:focus-within kbd { visibility: hidden; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* Filters */
-/* The "+ Filter" bar itself is styled by filter-chips.css. */
-.filters { min-height: 34px; }
+/* The "+ Filter" bar is styled by filter-chips.css; here it only takes the card's height. */
+.filters .fc-bar { --fc-height: var(--control); --fc-dash: #9ea2dc; }
 
-/* Legend */
-.legend-row {
+.total { margin-left: auto; padding: 0 10px 0 4px; font-size: 13px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.total b { font-weight: 600; color: var(--ink); }
+
+/* The view line: label + value pairs, each value a text-like dropdown sized to its text, then the colour key */
+.viewbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 6px 16px;
+  padding: 0 12px;
   font-size: 13px;
+  color: var(--muted);
 }
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
+.view-settings { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; }
+.view-item { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.ghost { position: relative; display: inline-flex; max-width: 100%; }
+.ghost select {
+  appearance: none;
+  -webkit-appearance: none;
+  max-width: 100%;
+  height: 30px;
+  margin: 0;
+  padding: 0 24px 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: 600 13px Inter, system-ui, sans-serif;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  cursor: pointer;
 }
-.legend span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
+.ghost::after {
+  content: "";
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -5px;
+  border-right: 1.6px solid var(--muted);
+  border-bottom: 1.6px solid var(--muted);
+  transform: rotate(45deg);
+  pointer-events: none;
 }
-.legend i {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
+.ghost select:hover { background: rgba(255, 255, 255, .75); }
+.ghost select:focus-visible { outline: 2px solid var(--link); outline-offset: 0; background: var(--surface); }
+.view-rule { width: 1px; align-self: stretch; min-height: 18px; background: var(--line); }
+.view-rule:has(+ .legend:empty) { display: none; }
+
+/* Legend: the colour key */
+/* The key takes the rest of the line and wraps inside it, so it never drops below the divider and leaves it dangling. */
+.legend { flex: 1 1 0; min-width: 240px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; color: var(--ink); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend i { width: 10px; height: 10px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
+
+/* Phone (and narrow windows): search takes the card's width; settings sit in three columns (label over value), a hairline, then the key. */
+@media (max-width: 720px) {
+  .page { padding: 16px; }
+  .findbar { border-radius: 22px; }
+  .searchbox { flex-basis: 100%; max-width: none; }
+  .searchbox kbd { display: none; }
+  .viewbar { flex-direction: column; align-items: stretch; gap: 10px; padding: 0 4px; }
+  .view-settings { display: grid; grid-template-columns: repeat(3, minmax(0, auto)); justify-content: space-between; gap: 0 12px; }
+  .view-item { flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; font-size: 11px; letter-spacing: .02em; }
+  .view-item .ghost select { padding-left: 0; }
+  .view-rule { width: auto; height: 1px; min-height: 0; }
+  .legend { flex: none; min-width: 0; gap: 6px 12px; }
 }
-.total { margin-left: auto; color: var(--muted); }
 
 .message {
   margin: 0;
@@ -169,3 +235,70 @@ body {
     var(--surface) 0);
 }
 .chip.broken { color: var(--broken); text-decoration: line-through; }
+
+/* Search: the matched text in a title, and which field matched when it wasn't the title */
+.chip mark { background: #ffe58a; color: inherit; border-radius: 3px; }
+.chip .why { flex: none; font-size: 11px; font-weight: 400; color: var(--muted); }
+
+/* Gallery: a starred chip, and the selected one */
+.chip .star { flex: none; margin-left: -2px; color: #c58a00; font-size: 12px; }
+.chip.selected { border-color: var(--link); box-shadow: 0 0 0 3px rgba(59, 63, 184, .18); }
+.chip.selected.playing { border-color: var(--accent); }
+
+/* The clip bar: the selected clip's unique name, Star, Copy name, Copy link */
+.clipbar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 12px 10px 16px;
+  border-radius: 18px;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(29, 31, 58, .3);
+}
+.clipbar[hidden] { display: none; }
+.clipbar-text { min-width: 0; }
+.clipbar-title { font: 700 16px "Space Grotesk", sans-serif; overflow-wrap: anywhere; }
+.clipbar-meta { color: #b9bbdc; font-size: 12px; }
+.clipbar-name {
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .1);
+  font: 500 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.clipbar-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+.clipbar button {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  font: 500 13px Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+.clipbar button:hover { background: rgba(255, 255, 255, .22); }
+.clipbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.clipbar button[aria-pressed="true"] { background: #ffd24a; color: #3a2f00; }
+.clipbar .clipbar-close { width: 34px; padding: 0; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  z-index: 30;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #0f766e;
+  color: #fff;
+  font-size: 13px;
+}
+.toast[hidden] { display: none; }

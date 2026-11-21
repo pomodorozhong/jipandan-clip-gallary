@@ -16,8 +16,6 @@
 .shell { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100vh; }
 .main { display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 20px 24px; overflow-y: auto; }
 .main .toolbar { gap: 8px; }
-.main .pill { min-height: 36px; font-size: 13px; }
-.main .pill select, .main .pill input { height: 28px; font-size: 13px; }
 
 .side { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-right: 1px solid var(--column); }
 .side-top { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 18px 14px; }
@@ -147,6 +145,6 @@ dialog.sheet::backdrop { background: rgba(29, 31, 58, .35); }
 .now .drop-btn:hover { background: #fde8e8; color: #9b1c1c; }
 .now.is-dropped .drop-btn:hover { background: var(--column); color: var(--ink); }
 .now.is-dropped .now-text b, .now.is-dropped .now-meta small { opacity: .6; }
-.now-meta .wave-link { font: inherit; }
+.now-meta .batch-link { font: inherit; }
 .side-label .rename-uses { font: 500 12px Inter, sans-serif; text-transform: none; letter-spacing: 0; }
 .uses.renaming .tag { outline: 2px dashed var(--link); outline-offset: -2px; }
