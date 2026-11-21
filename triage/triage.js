@@ -50,8 +50,10 @@
   const first = (v) => (Array.isArray(v) ? v[0] : v) || '';
   const has = (c, key) => [].concat(c[key] ?? []).some((v) => String(v).trim());
   const ready = (c) => has(c, GAME) && has(c, USE);
-  // Key order does not count: removing a use case and adding it back leaves the clip unedited.
-  const canon = (c) => JSON.stringify(Object.keys(c).sort().map((k) => [k, c[k]]));
+  // Key order does not count, and one use case stored as a string or as a one-item list is the same:
+  // removing a use case and adding it back leaves the clip unedited.
+  const one = (v) => (Array.isArray(v) && v.length === 1 ? v[0] : v);
+  const canon = (c) => JSON.stringify(Object.keys(c).sort().map((k) => [k, k === USE ? one(c[k]) : c[k]]));
   const edited = (c) => original.get(c.audio) !== canon(c);
 
   // A dropped clip stays on the board in a Dropped column. In the inbox it is kept but never published;
