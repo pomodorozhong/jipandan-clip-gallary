@@ -53,6 +53,7 @@ body {
   color: var(--ink);
 }
 .pill input { width: 160px; }
+.pill.search input { width: 210px; max-width: 60vw; }
 
 /* Filters */
 /* The "+ Filter" bar itself is styled by filter-chips.css. */
