@@ -147,3 +147,4 @@ dialog.sheet::backdrop { background: rgba(29, 31, 58, .35); }
 .now .drop-btn:hover { background: #fde8e8; color: #9b1c1c; }
 .now.is-dropped .drop-btn:hover { background: var(--column); color: var(--ink); }
 .now.is-dropped .now-text b, .now.is-dropped .now-meta small { opacity: .6; }
+.now-meta .wave-link { font: inherit; }
