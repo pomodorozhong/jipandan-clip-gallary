@@ -68,11 +68,13 @@
   }
   const pendingCount = (p) => p.add.length + p.edit.length + p.missing.length + p.dropped.length;
 
+  // Use cases some clip has, in the published order first. One that is only in the order (such as a
+  // sample use case after the sample clips are gone) gets no pill or key.
   function useCases() {
     const dim = dims.find((d) => d.key === USE);
-    const seen = new Set((dim && dim.order) || []);
-    allClips().forEach((c) => [].concat(c[USE] ?? []).forEach((v) => v && seen.add(String(v))));
-    return [...seen];
+    const used = new Set(allClips().flatMap(usesOf));
+    const order = ((dim && dim.order) || []).map(String).filter((u) => used.has(u));
+    return [...new Set([...order, ...used])];
   }
 
   function games() {
