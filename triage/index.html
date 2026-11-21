@@ -9,7 +9,12 @@
   <!-- The viewer's own styles and board script, plus the triage additions. Served by scripts/triage.mjs. -->
   <link rel="stylesheet" href="/assets/style.css">
   <link rel="stylesheet" href="/triage/triage.css">
-  <script type="module">import * as naming from '/triage/naming.mjs'; window.clipNaming = naming;</script>
+  <script type="module">
+    import * as naming from '/triage/naming.mjs';
+    import * as keys from '/triage/keys.mjs';
+    window.clipNaming = naming;
+    window.clipKeys = keys;
+  </script>
   <script src="/triage/triage.js" defer></script>
   <script src="/assets/app.js" defer></script>
 </head>
