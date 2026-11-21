@@ -51,6 +51,8 @@ Your work on unpublished clips is saved in `inbox/` as you go, so you can close 
 
 **Publish** sends every clip that has both a game and a use case (and is not dropped) to GitHub: it moves their audio into `src/clips/`, adds them to `src/data/clips.json`, commits the clip list and only the audio files it moved in, deleted, or found already in `src/clips/` for a new clip, on the branch you have checked out, and pushes that branch. Other changes under `src/clips/` are never swept into that commit. Clips still missing a game or a use case stay in `inbox/`, on your computer only.
 
+Each publish is a **wave**. Every clip it adds gets a `wave` with that day's date, and the newest wave comes first when the board or the gallery is sorted or filtered by wave; the gallery opens sorted that way. Clips published before keep their wave, so two publishes on the same day make one wave. To give a wave a name, select one of its published clips and click **wave …** under its title: the new name applies to every clip in that wave, keeps the wave's place in the order, and goes out on the next Publish.
+
 - **On `main`**, the site updates about a minute later.
 - **On another branch**, the clips go live once that branch is merged into `main`. **Open a pull request**, under the Publish button, opens one on GitHub so someone can review the clips first.
 
