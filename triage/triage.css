@@ -148,3 +148,5 @@ dialog.sheet::backdrop { background: rgba(29, 31, 58, .35); }
 .now.is-dropped .drop-btn:hover { background: var(--column); color: var(--ink); }
 .now.is-dropped .now-text b, .now.is-dropped .now-meta small { opacity: .6; }
 .now-meta .wave-link { font: inherit; }
+.side-label .rename-uses { font: 500 12px Inter, sans-serif; text-transform: none; letter-spacing: 0; }
+.uses.renaming .tag { outline: 2px dashed var(--link); outline-offset: -2px; }

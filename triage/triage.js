@@ -289,6 +289,7 @@
   const KEY_SLOTS = 9;  // use cases on the number keys
   const PILL_CAP = 15;  // pills shown before "Show all"
   let showAllUses = false;
+  let renamingUse = false; // the next click on a use case pill renames it instead of tagging
   let keyed = [];        // use cases on keys 1–9, in key order
 
   // Small DOM helper: el('b', 'cls', 'text', child, ...)
@@ -406,7 +407,12 @@
       const at = keys.indexOf(u);
       const b = button('tag' + (mine.includes(u) ? ' on' : '') + (at < 0 ? ' nokey' : ''), at < 0 ? null : kbd(String(at + 1)), u);
       b.title = `${plural(count(u), 'clip')}${mine.includes(u) ? ' · click to remove from this clip' : ''}`;
-      b.onclick = () => toggleUse(u);
+      b.onclick = () => {
+        if (!renamingUse) { toggleUse(u); return; }
+        renamingUse = false;
+        renameTag(USE, 'use case', u);
+        renderTagPanel();
+      };
       return b;
     });
     if (q && !all.some((u) => u.toLowerCase() === q)) {
@@ -416,6 +422,10 @@
     }
     if (!pills.length) pills.push(el('span', 'hint', 'No use cases yet. Type a name above to create one.'));
     $('uses').replaceChildren(...pills);
+    $('uses').classList.toggle('renaming', renamingUse);
+    $('rename-uses').hidden = !all.length;
+    $('rename-uses').textContent = renamingUse ? 'Cancel rename' : 'Rename…';
+    $('rename-hint').hidden = !renamingUse;
     $('use-total').textContent = all.length ? `${all.length} total` : '';
     const more = $('more-uses');
     more.hidden = q || ordered.length <= PILL_CAP;
@@ -432,27 +442,53 @@
     return link;
   }
 
-  // A renamed wave keeps its place in the Wave order, so the newest wave still comes first.
-  function renameWave(old) {
-    const inWave = pub.filter((c) => String(c[WAVE]) === old);
-    const name = (prompt(`Rename the wave “${old}” (${plural(inWave.length, 'clip')}) to:`, old) || '').trim();
+  const valuesIn = (c, key) => [].concat(c[key] ?? []).map(String);
+
+  // Rename a tag value on every clip, published or not, and in its dimension's order, so it keeps its
+  // place. A clip that already had the new name keeps it once. Inbox clips are saved right away;
+  // published ones go out on the next Publish.
+  function renameValue(key, old, name) {
+    let inboxChanged = false;
+    for (const c of [...pub, ...inbox]) {
+      const values = valuesIn(c, key);
+      if (!values.includes(old)) continue;
+      const next = [...new Set(values.map((v) => (v === old ? name : v)))];
+      c[key] = next.length === 1 ? next[0] : next;
+      if (isInbox(c.audio)) inboxChanged = true;
+    }
+    const dim = dims.find((d) => d.key === key);
+    if (dim && Array.isArray(dim.order)) dim.order = [...new Set(dim.order.map((v) => (String(v) === old ? name : String(v))))];
+    if (key === USE) keyed = [...new Set(keyed.map((u) => (u === old ? name : u)))]; // the use case keeps its number key
+    if (inboxChanged) saveInbox();
+  }
+
+  // Ask for a new name for a use case, game or wave, and rename it on every clip. A name that is
+  // already taken merges the two, after asking (waves are never merged).
+  function renameTag(key, kind, old) {
+    const count = [...pub, ...inbox].filter((c) => valuesIn(c, key).includes(old)).length;
+    const name = (prompt(`Rename the ${kind} “${old}” (${plural(count, 'clip')}) to:`, old) || '').trim();
     if (!name || name === old) return;
-    if (pub.some((c) => String(c[WAVE]) === name)) { toast(`There is already a wave called “${name}”.`, true); return; }
-    inWave.forEach((c) => { c[WAVE] = name; });
-    const dim = dims.find((d) => d.key === WAVE);
-    if (dim && Array.isArray(dim.order)) dim.order = dim.order.map((v) => (String(v) === old ? name : v));
+    const taken = [...pub, ...inbox].some((c) => valuesIn(c, key).includes(name));
+    if (taken && key === WAVE) { toast(`There is already a wave called “${name}”.`, true); return; }
+    if (taken && !confirm(`“${name}” is already a ${kind}. Merge “${old}” into it? Every clip with “${old}” gets “${name}” instead.`)) return;
+    renameValue(key, old, name);
+    toast(`${taken ? 'Merged' : 'Renamed'} “${old}” ${taken ? 'into' : 'to'} “${name}” on ${plural(count, 'clip')}.`);
     refresh();
   }
+  // A renamed wave keeps its place in the Wave order, so the newest wave still comes first.
+  const renameWave = (old) => renameTag(WAVE, 'wave', old);
 
   // The selected clip's game, for the odd clip whose game differs from the rest of its import.
   function gameMenu(clip) {
     const current = first(clip[GAME]);
     const select = document.createElement('select');
-    const opts = [...(current ? [] : [['', 'Pick a game…']]), ...games().map((g) => [g, g]), ['+', '+ New game…']];
+    const opts = [...(current ? [] : [['', 'Pick a game…']]), ...games().map((g) => [g, g]), ['+', '+ New game…'],
+      ...(current ? [['~rename', `Rename “${current}” for every clip…`]] : [])];
     select.replaceChildren(...opts.map(([v, label]) => new Option(label, v)));
     select.value = current;
     select.onchange = () => {
       let value = select.value;
+      if (value === '~rename') { select.value = current; select.blur(); renameTag(GAME, 'game', current); return; }
       if (value === '+') value = (prompt('Name of the new game') || '').trim();
       if (!value) { select.value = current; return; }
       clip[GAME] = value;
@@ -498,6 +534,7 @@
 
   function wireSide() {
     $('more-uses').onclick = () => { showAllUses = !showAllUses; renderTagPanel(); };
+    $('rename-uses').onclick = () => { renamingUse = !renamingUse; renderTagPanel(); };
     $('untag').onclick = clearUses;
     const filter = $('use-filter');
     filter.oninput = renderTagPanel;
@@ -617,6 +654,7 @@
     else if (e.key === 'n' || e.key === 'N') goNext();
     else if ((e.key === 'd' || e.key === 'D') && selected) toggleDrop();
     else if (e.key === '/' && selected) $('use-filter').focus();
+    else if (e.key === 'Escape' && renamingUse) { renamingUse = false; renderTagPanel(); }
     else if (e.key === 'Escape' && selected) { selected = null; showSelected(); }
     else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') step(1);
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') step(-1);
