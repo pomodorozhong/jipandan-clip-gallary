@@ -53,7 +53,36 @@ body {
   color: var(--ink);
 }
 .pill input { width: 160px; }
-.pill.search input { width: 210px; max-width: 60vw; }
+/* Search is not a view setting like the pills beside it: a wider, squarer field with an icon and an outline. */
+.searchbox {
+  flex: 1 1 260px;
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px 0 12px;
+  margin-right: 8px;
+  border: 2px solid #c9ccf0;
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: text;
+}
+.searchbox:hover { border-color: #a9addf; }
+.searchbox:focus-within { border-color: var(--link); box-shadow: 0 0 0 3px rgba(59, 63, 184, .15); }
+.searchbox svg { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; }
+.searchbox input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: 400 14px Inter, system-ui, sans-serif;
+  color: var(--ink);
+}
+.searchbox input::placeholder { color: var(--muted); opacity: .8; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Filters */
 /* The "+ Filter" bar itself is styled by filter-chips.css. */

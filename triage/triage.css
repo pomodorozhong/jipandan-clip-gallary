@@ -18,6 +18,8 @@
 .main .toolbar { gap: 8px; }
 .main .pill { min-height: 36px; font-size: 13px; }
 .main .pill select, .main .pill input { height: 28px; font-size: 13px; }
+.main .searchbox { min-height: 36px; }
+.main .searchbox input { height: 30px; font-size: 13px; }
 
 .side { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-right: 1px solid var(--column); }
 .side-top { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 18px 14px; }
