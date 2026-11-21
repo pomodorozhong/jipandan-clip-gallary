@@ -4,9 +4,9 @@
       "key": "use-case",
       "label": "Use case",
       "order": [
-        "Hurt",
-        "Victory",
-        "Idle chatter",
+        "受傷",
+        "贏啦",
+        "角色待機",
         "Tutorial",
         "UI feedback"
       ]
@@ -14,275 +14,859 @@
     {
       "key": "source-game",
       "label": "Source game"
+    },
+    {
+      "key": "recording",
+      "label": "Recording"
+    },
+    {
+      "key": "batch",
+      "label": "Batch",
+      "defaultSort": true,
+      "order": [
+        "2026-11-21"
+      ]
     }
   ],
   "clips": [
     {
-      "title": "grunt",
-      "audio": "clips/sample-game-a/grunt.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Hurt"
+      "title": "(笑)",
+      "audio": "clips/clip_0151_(笑).mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": "贏啦",
+      "batch": "2026-11-21"
     },
     {
-      "title": "ouch",
-      "audio": "clips/sample-game-a/ouch.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Hurt"
+      "title": "一百啊",
+      "audio": "clips/clip_0347_一百啊.mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
     },
     {
-      "title": "oof",
-      "audio": "clips/sample-game-a/oof.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Hurt"
+      "title": "(笑)",
+      "audio": "clips/clip_0449_(笑).mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": "贏啦",
+      "batch": "2026-11-21"
     },
     {
-      "title": "hiss",
-      "audio": "clips/sample-game-a/hiss.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Hurt"
+      "title": "Bingbong欸",
+      "audio": "clips/clip_0465_Bingbong欸.mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
     },
     {
-      "title": "ow ow",
-      "audio": "clips/sample-game-a/ow-ow.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Hurt"
+      "title": "(笑)",
+      "audio": "clips/clip_0666_(笑).mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": "贏啦",
+      "batch": "2026-11-21"
     },
     {
-      "title": "gasp",
-      "audio": "clips/sample-game-a/gasp.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Hurt"
+      "title": "一人一台小車車",
+      "audio": "clips/clip_0697_一人一台小車車.mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
     },
     {
-      "title": "hmph",
-      "audio": "clips/sample-game-a/hmph.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Hurt"
-    },
-    {
-      "title": "yay!",
-      "audio": "clips/sample-game-a/yay.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Victory"
-    },
-    {
-      "title": "woohoo",
-      "audio": "clips/sample-game-a/woohoo.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Victory"
-    },
-    {
-      "title": "heh, easy",
-      "audio": "clips/sample-game-a/heh-easy.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Victory"
-    },
-    {
-      "title": "yes!",
-      "audio": "clips/sample-game-a/yes.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Victory"
-    },
-    {
-      "title": "hum tune",
-      "audio": "clips/sample-game-a/hum-tune.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Idle chatter"
-    },
-    {
-      "title": "whistle",
-      "audio": "clips/sample-game-a/whistle.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Idle chatter"
-    },
-    {
-      "title": "so bored",
-      "audio": "clips/sample-game-a/so-bored.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Idle chatter"
-    },
-    {
-      "title": "yawn",
-      "audio": "clips/sample-game-a/yawn.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Idle chatter"
-    },
-    {
-      "title": "press to jump",
-      "audio": "clips/sample-game-a/press-to-jump.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Tutorial"
-    },
-    {
-      "title": "try again",
-      "audio": "clips/sample-game-a/try-again.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Tutorial"
-    },
-    {
-      "title": "hold to run",
-      "audio": "clips/sample-game-a/hold-to-run.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "Tutorial"
-    },
-    {
-      "title": "ok",
-      "audio": "clips/sample-game-a/ok.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "UI feedback"
-    },
-    {
-      "title": "nope",
-      "audio": "clips/sample-game-a/nope.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "UI feedback"
-    },
-    {
-      "title": "back",
-      "audio": "clips/sample-game-a/back.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "UI feedback"
-    },
-    {
-      "title": "got it",
-      "audio": "clips/sample-game-a/got-it.ogg",
-      "source-game": "Sample Game A",
-      "use-case": "UI feedback"
-    },
-    {
-      "title": "ugh low",
-      "audio": "clips/sample-game-b/ugh-low.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Hurt"
-    },
-    {
-      "title": "groan long",
-      "audio": "clips/sample-game-b/groan-long.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Hurt"
-    },
-    {
-      "title": "crunch hit",
-      "audio": "clips/sample-game-b/crunch-hit.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Hurt"
-    },
-    {
-      "title": "yelp",
-      "audio": "clips/sample-game-b/yelp.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Hurt"
-    },
-    {
-      "title": "eek",
-      "audio": "clips/sample-game-b/eek.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Hurt"
-    },
-    {
-      "title": "roar",
-      "audio": "clips/sample-game-b/roar.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Victory"
-    },
-    {
-      "title": "stomp roar",
-      "audio": "clips/sample-game-b/stomp-roar.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Victory"
-    },
-    {
-      "title": "we did it",
-      "audio": "clips/sample-game-b/we-did-it.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Victory"
-    },
-    {
-      "title": "cheer",
-      "audio": "clips/sample-game-b/cheer.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Victory"
-    },
-    {
-      "title": "hmm",
-      "audio": "clips/sample-game-b/hmm.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Idle chatter"
-    },
-    {
-      "title": "welcome in",
-      "audio": "clips/sample-game-b/welcome-in.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Idle chatter"
-    },
-    {
-      "title": "take a look",
-      "audio": "clips/sample-game-b/take-a-look.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Idle chatter"
-    },
-    {
-      "title": "fine wares",
-      "audio": "clips/sample-game-b/fine-wares.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Idle chatter"
-    },
-    {
-      "title": "come back!",
-      "audio": "clips/sample-game-b/come-back.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Idle chatter"
-    },
-    {
-      "title": "grumble",
-      "audio": "clips/sample-game-b/grumble.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Idle chatter"
-    },
-    {
-      "title": "over here",
-      "audio": "clips/sample-game-b/over-here.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Tutorial"
-    },
-    {
-      "title": "follow me",
-      "audio": "clips/sample-game-b/follow-me.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Tutorial"
-    },
-    {
-      "title": "watch out",
-      "audio": "clips/sample-game-b/watch-out.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "Tutorial"
-    },
-    {
-      "title": "ding",
-      "audio": "clips/sample-game-b/ding.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "UI feedback"
-    },
-    {
-      "title": "select",
-      "audio": "clips/sample-game-b/select.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "UI feedback"
-    },
-    {
-      "title": "huh",
-      "audio": "clips/sample-game-b/huh.ogg",
-      "source-game": "Sample Game B",
+      "title": "(鬼叫)",
+      "audio": "clips/0511_0003_(鬼叫).mp3",
+      "recording": "0511",
+      "source-game": "REPO",
       "use-case": [
-        "UI feedback",
-        "Idle chatter"
-      ]
+        "奇怪音效",
+        "受傷",
+        "失敗"
+      ],
+      "batch": "2026-11-21"
     },
     {
-      "title": "saved",
-      "audio": "clips/sample-game-b/saved.ogg",
-      "source-game": "Sample Game B",
-      "use-case": "UI feedback"
+      "title": "(pupuba)讚欸",
+      "audio": "clips/0511_0160_(pupuba)讚欸.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "角色待機",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(pupuba)讚欸",
+      "audio": "clips/0511_0161_(pupuba)讚欸.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "角色待機",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(?台語我不會啦)來對我走",
+      "audio": "clips/0511_0166_(？台語我不會啦)來對我走.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(pupuba)摸他",
+      "audio": "clips/0511_0184_(pupuba)摸他.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(pupuba)快逃啊沒體力啊",
+      "audio": "clips/0511_0299_(pupuba)快逃啊沒體力啊.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(笑)",
+      "audio": "clips/0511_0370_(笑).mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "贏啦",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "ㄟ我玩這個遊戲也太沒有遊戲體驗了吧",
+      "audio": "clips/0511_0392_ㄟ我玩這個遊戲也太沒有遊戲體驗了吧.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "失敗",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "wow超級走位",
+      "audio": "clips/0511_0449_wow超級走位.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "攻擊",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "700塊",
+      "audio": "clips/0511_0472_700塊.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(偷笑pupuba)噗噗巴",
+      "audio": "clips/0511_0635_(偷笑pupuba)噗噗巴.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(哼哼)",
+      "audio": "clips/0511_0935_(哼哼).mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "攻擊",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(倒吸一口氣)",
+      "audio": "clips/0511_1320_(倒吸一口氣).mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": [
+        "受傷",
+        "失敗",
+        "教學/對話"
+      ],
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "123456",
+      "audio": "clips/0511_1496_123456.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "123456",
+      "audio": "clips/0511_1724_123456.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(倒吸一口氣)",
+      "audio": "clips/0511_2204_(倒吸一口氣).mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "受傷",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "12點了",
+      "audio": "clips/0511_2469_12點了.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(哼哼哼)😏",
+      "audio": "clips/0511_2545_(哼哼哼)😏.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "贏啦",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一定會啦",
+      "audio": "clips/0526_0097_一定會啦.mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一定是許的願不夠多啊",
+      "audio": "clips/0526_0098_一定是許的願不夠多啊.mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": [
+        "失敗",
+        "教學/對話"
+      ],
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(台)我要酸啊",
+      "audio": "clips/0526_0250_(台)我要酸啊.mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "受傷",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(精美喝水音效)",
+      "audio": "clips/0526_0655_(精美喝水音效).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(精美喝水音效)",
+      "audio": "clips/0526_0659_(精美喝水音效).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一人一邊",
+      "audio": "clips/0526_0666-3_一人一邊.mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(精美喝水音效)",
+      "audio": "clips/0526_0713_(精美喝水音效).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(咻~碰!)",
+      "audio": "clips/0526_0776_(咻~碰!).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(咻~咻~)",
+      "audio": "clips/0526_0884_(咻~咻~).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一直有個東西在爆炸 可惡",
+      "audio": "clips/0526_0907_一直有個東西在爆炸 可惡.mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": [
+        "角色待機",
+        "受傷"
+      ],
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(勒勒勒🎵)",
+      "audio": "clips/0526_0918_(勒勒勒🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "贏啦",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(呃嗯🎵)",
+      "audio": "clips/0526_0955_(呃嗯🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(呃嗯🎵)",
+      "audio": "clips/0526_0957_(呃嗯🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "6發帶他走",
+      "audio": "clips/0526_0970_6發帶他走.mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "攻擊",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(🎵)",
+      "audio": "clips/0526_0978_(🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(🎵)",
+      "audio": "clips/0526_0979_(🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(摸骨摸骨 摸骨摸骨🎵)",
+      "audio": "clips/0526_0994_(摸骨摸骨 摸骨摸骨🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(摸骨摸骨🎵)",
+      "audio": "clips/0526_0998_(摸骨摸骨🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(喲喲喲喲🎵)",
+      "audio": "clips/0526_1025_(喲喲喲喲🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(喲喲喲喲🎵)",
+      "audio": "clips/0526_1026_(喲喲喲喲🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(咚咚🎵)",
+      "audio": "clips/0526_1035_(咚咚🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(我要撿子彈🎵)",
+      "audio": "clips/0526_1036_(我要撿子彈🎵).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一百等剛剛好",
+      "audio": "clips/0526_1082_一百等剛剛好.mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(倒吸一口氣)",
+      "audio": "clips/0526_1100_(倒吸一口氣).mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "受傷",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(?????)",
+      "audio": "clips/0602_0029_(？？？？？).mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(笑)",
+      "audio": "clips/0602_0121_(笑).mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "贏啦",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一定要對歪神好點",
+      "audio": "clips/0602_0351_一定要對歪神好點.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一群怪人",
+      "audio": "clips/0602_0415_一群怪人.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "角色待機",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "よろしく",
+      "audio": "clips/0602_0432_よろしく.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一緒に頑張ろうね",
+      "audio": "clips/0602_0434_一緒に頑張ろうね.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(咿咿喔喔🎵)",
+      "audio": "clips/0602_0459-2_(咿咿喔喔🎵).mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(鬼叫)",
+      "audio": "clips/0602_0489_(鬼叫).mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "受傷",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(鬼叫)",
+      "audio": "clips/0602_0536_(鬼叫).mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "受傷",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一定有人在偷搞我的鼻子",
+      "audio": "clips/0602_0594_一定有人在偷搞我的鼻子.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "失敗",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "70分鐘怎麼過得那麼快啊",
+      "audio": "clips/0602_0609_70分鐘怎麼過得那麼快啊.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "You know",
+      "audio": "clips/0602_0815_You know.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(咿咿喔喔🎵)",
+      "audio": "clips/0602_0935_(咿咿喔喔🎵).mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一定要死",
+      "audio": "clips/0602_0954_一定要死.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "攻擊",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(呵呵呵)",
+      "audio": "clips/0602_1121_(呵呵呵).mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": [
+        "角色待機",
+        "贏啦"
+      ],
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(拍貓🐈)",
+      "audio": "clips/0602_1280_(拍貓🐈).mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "奇怪音效",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一直有人在阻止我",
+      "audio": "clips/0602_1412_一直有人在阻止我.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": [
+        "失敗",
+        "教學/對話"
+      ],
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一定要受罰",
+      "audio": "clips/0602_1462_一定要受罰.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一定要受罰",
+      "audio": "clips/0602_1464_一定要受罰.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "一定是我按的不夠快",
+      "audio": "clips/0903_5140_一定是我按的不夠快.mp3",
+      "recording": "0903",
+      "source-game": "Elden Ring",
+      "use-case": "失敗",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(笑)",
+      "audio": "clips/raw2-1_0199_(笑).mp3",
+      "recording": "raw2-1",
+      "source-game": "MHRise",
+      "use-case": "贏啦",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "0524_4_我喜歡看任務是紅色的",
+      "audio": "clips/0524_4_我喜歡看任務是紅色的.mp3",
+      "source-game": "MHWilds",
+      "use-case": "失敗",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "miku你看我帥吧",
+      "audio": "clips/20260423_0018_miku你看我帥吧.mp3",
+      "recording": "20260423",
+      "source-game": "Windrose",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Hello",
+      "audio": "clips/clip_0029_Hello.mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": [
+        "角色待機",
+        "教學/對話"
+      ],
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku怎麼死掉了",
+      "audio": "clips/clip_0325_Miku怎麼死掉了.mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Let it go, let it go",
+      "audio": "clips/clip_0803_Let it go, let it go.mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": "失敗",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "let it go",
+      "audio": "clips/clip_0803_let it go.mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "let it go",
+      "audio": "clips/clip_0833_let it go.mp3",
+      "recording": "clip",
+      "source-game": "REPO",
+      "use-case": "失敗",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "300倍",
+      "audio": "clips/0511_0178_300倍.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku這裡這裡裡面還有一個",
+      "audio": "clips/0511_0250_Miku這裡這裡裡面還有一個.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku還活著喔",
+      "audio": "clips/0511_0308_Miku還活著喔.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku還活著",
+      "audio": "clips/0511_0309_Miku還活著.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku就還活著",
+      "audio": "clips/0511_0311_Miku就還活著.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "open",
+      "audio": "clips/0511_0697_open.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku你真的很醜",
+      "audio": "clips/0511_1154_Miku你真的很醜.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "go啦 go啦",
+      "audio": "clips/0511_1358_go啦 go啦.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku舉不起來",
+      "audio": "clips/0511_1421_Miku舉不起來.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku這個超大耶",
+      "audio": "clips/0511_1455_Miku這個超大耶.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku",
+      "audio": "clips/0511_1458_Miku.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku快爆炸囉",
+      "audio": "clips/0511_1518_Miku快爆炸囉.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miku↘️",
+      "audio": "clips/0511_1796_Miku↘️.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Miki走 我們繼續探險",
+      "audio": "clips/0511_2184_Miki走 我們繼續探險.mp3",
+      "recording": "0511",
+      "source-game": "REPO",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "(台)沒子彈了我要酸啊",
+      "audio": "clips/0526_0249_(台)沒子彈了我要酸啊.mp3",
+      "recording": "0526",
+      "source-game": "Far Far West",
+      "use-case": "失敗",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Oh my god",
+      "audio": "clips/0602_0012_Oh my god.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": [
+        "失敗",
+        "教學/對話"
+      ],
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "oh my god 好恐怖",
+      "audio": "clips/0602_0197_oh my god 好恐怖.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": [
+        "失敗",
+        "教學/對話"
+      ],
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "oh my god",
+      "audio": "clips/0602_0539_oh my god.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": [
+        "失敗",
+        "教學/對話"
+      ],
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Double中獎",
+      "audio": "clips/0602_0540_Double中獎.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "超冷門情境",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "Let me go",
+      "audio": "clips/0602_0814_Let me go.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "I don't know",
+      "audio": "clips/0602_0816_I don't know.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "It's my turn",
+      "audio": "clips/0602_0827_It's my turn.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "It's my turn to 歇睏",
+      "audio": "clips/0602_0828_It's my turn to 歇睏.mp3",
+      "recording": "0602",
+      "source-game": "MHWilds",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "WOW",
+      "audio": "clips/0903_2126_WOW.mp3",
+      "recording": "0903",
+      "source-game": "Elden Ring",
+      "use-case": "受傷",
+      "batch": "2026-11-21"
+    },
+    {
+      "title": "OK 還好他出廢招",
+      "audio": "clips/0903_4467_OK 還好他出廢招.mp3",
+      "recording": "0903",
+      "source-game": "Elden Ring",
+      "use-case": "教學/對話",
+      "batch": "2026-11-21"
     }
   ]
 }
