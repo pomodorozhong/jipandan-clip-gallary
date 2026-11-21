@@ -508,6 +508,8 @@ describe('POST /api/publish', () => {
     assert.equal(result.committed, true);
     assert.equal(result.pushed, true);
     assert.equal(result.message, `Pushed 1 new clip, 1 removed clip to ${BRANCH} (${result.commit}). They go live once ${BRANCH} is merged into main.`);
+    // The page words this in its own language from `notice`.
+    assert.deepEqual(result.notice, { kind: 'branch', added: 1, removed: 1, commit: result.commit, branch: BRANCH, liveBranch: 'main' });
 
     const name = '0602_0029_(？？？？？).mp3';
     assert.deepEqual(fs.readFileSync(file('src', 'clips', name)), AUDIO.question, 'audio moved into src/clips');
@@ -601,6 +603,7 @@ describe('POST /api/publish', () => {
     const result = await res.json();
     assert.equal(result.committed, false);
     assert.equal(result.message, 'Nothing changed, so nothing was published.');
+    assert.deepEqual(result.notice, { kind: 'nothing' });
   });
 
   test('says so plainly when the branch was deleted on GitHub', async () => {
