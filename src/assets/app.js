@@ -3,9 +3,13 @@
 // Every field on a clip other than `title` and `audio` is a "dimension".
 // Any dimension can set the columns, the chip colour, the sort order, or a filter.
 // Dimensions come from `dimensions` in data/clips.json, or are inferred from the clips.
+//
+// The local triage page (triage/) reuses this board. It sets `window.clipBoardHooks` before this
+// script runs, and drives the board through `window.clipBoard`. The published viewer sets no hooks.
 (() => {
   'use strict';
 
+  const hooks = window.clipBoardHooks || {};
   const DATA_URL = 'data/clips.json';
   const RESERVED = new Set(['title', 'audio']);
   const NONE = '(none)';
@@ -92,10 +96,12 @@
     for (const [k, v] of p) {
       if (k.startsWith('f.') && keys.includes(k.slice(2)) && v) filters[k.slice(2)] = v;
     }
+    // A dimension marked `defaultSort` (such as the wave, newest first) sorts the board until the viewer picks another order.
+    const sortDim = dims.find((d) => d.defaultSort);
     state = {
       cols: pick(p.get('cols'), keys[0], keys),
       colour: pick(p.get('colour'), keys[1] || keys[0] || 'none', keys.concat('none')),
-      sort: pick(p.get('sort'), 'title', sortOptions().map((o) => o.value)),
+      sort: pick(p.get('sort'), sortDim ? 'dim:' + sortDim.key : 'title', sortOptions().map((o) => o.value)),
       q: p.get('q') || '',
       filters,
     };
@@ -193,6 +199,7 @@
     btn.type = 'button';
     btn.className = 'chip';
     btn.dataset.id = clip.id;
+    btn.dataset.audio = clip.audio || '';
     const colourDim = dimByKey(state.colour);
     const [bg, fg] = colourDim ? colours.get(valuesOf(clip, colourDim.key)[0]) : PLAIN;
     const dot = document.createElement('span');
@@ -204,8 +211,12 @@
     label.textContent = clip.title;
     btn.append(dot, label);
     btn.title = dims.map((d) => d.label + ': ' + valuesOf(clip, d.key).join(', ')).join('\n');
-    btn.addEventListener('click', () => toggle(clip));
+    btn.addEventListener('click', () => {
+      toggle(clip);
+      if (hooks.onChipClick) hooks.onChipClick(clip, btn);
+    });
     paintChip(btn);
+    if (hooks.decorateChip) hooks.decorateChip(btn, clip);
     return btn;
   }
 
@@ -245,10 +256,13 @@
 
     const colsDim = dimByKey(state.cols);
     const sort = sorter();
-    $('board').replaceChildren(...(colsDim ? valueList(colsDim, visible) : []).map((value) => {
+    let columns = colsDim ? valueList(colsDim, visible) : [];
+    if (colsDim && hooks.orderColumns) columns = hooks.orderColumns(columns, colsDim.key);
+    $('board').replaceChildren(...columns.map((value) => {
       const items = visible.filter((c) => valuesOf(c, colsDim.key).includes(value)).sort(sort);
       const section = document.createElement('section');
       section.className = 'column';
+      section.dataset.value = value;
       const h2 = document.createElement('h2');
       const count = document.createElement('small');
       count.textContent = items.length;
@@ -257,6 +271,7 @@
       chips.className = 'chips';
       chips.append(...items.map((c) => chipFor(c, colours)));
       section.append(h2, chips);
+      if (hooks.decorateColumn) hooks.decorateColumn(section, value, colsDim.key);
       return section;
     }));
   }
@@ -306,19 +321,48 @@
     window.addEventListener('hashchange', () => { readHash(); buildControls(); render(); });
   }
 
+  function setData(data) {
+    const list = Array.isArray(data) ? data : (data.clips || []);
+    clips = list
+      .filter((c) => c && typeof c.title === 'string' && c.title.trim())
+      .map((c, id) => ({ ...c, id }));
+    const declared = Array.isArray(data.dimensions) ? data.dimensions : null;
+    dims = declared
+      ? declared.filter((d) => d && d.key).map((d) => ({ key: d.key, label: d.label || humanise(d.key), order: d.order, defaultSort: d.defaultSort === true }))
+      : inferDims(clips);
+  }
+
+  // For the triage page: swap in edited data and redraw, keeping the current view and playback.
+  window.clipBoard = {
+    NONE,
+    clips: () => clips,
+    state: () => ({ ...state }),
+    playingAudio: () => (playingId === null ? null : clips[playingId] && clips[playingId].audio),
+    toggle: (audio) => { const clip = clips.find((c) => c.audio === audio); if (clip) toggle(clip); },
+    update(data) {
+      const playing = this.playingAudio();
+      setData(data);
+      const next = clips.find((c) => c.audio === playing);
+      playingId = next ? next.id : null;
+      if (!next && playing) player.pause();
+      broken.clear();
+      readHash();
+      buildControls();
+      update();
+    },
+  };
+
   async function start() {
     try {
-      const res = await fetch(DATA_URL, { cache: 'no-cache' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : (data.clips || []);
-      clips = list
-        .filter((c) => c && typeof c.title === 'string' && c.title.trim())
-        .map((c, id) => ({ ...c, id }));
-      const declared = Array.isArray(data.dimensions) ? data.dimensions : null;
-      dims = declared
-        ? declared.filter((d) => d && d.key).map((d) => ({ key: d.key, label: d.label || humanise(d.key), order: d.order }))
-        : inferDims(clips);
+      let data;
+      if (hooks.load) {
+        data = await hooks.load();
+      } else {
+        const res = await fetch(DATA_URL, { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+      }
+      setData(data);
     } catch (err) {
       const message = $('message');
       message.hidden = false;
