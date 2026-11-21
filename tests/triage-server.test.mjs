@@ -34,6 +34,8 @@ const readJson = (...parts) => JSON.parse(fs.readFileSync(file(...parts), 'utf8'
 const git = (...args) => execFileSync('git', args, { cwd: tmp, encoding: 'utf8' }).trim();
 const audio = (size = 4000) => randomBytes(size);
 const enc = (name) => encodeURIComponent(name); // a clip's audio value as a query parameter
+const pad = (n) => String(n).padStart(2, '0');
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 
 // Fixture audio. The names cover full-width look-alikes, URL characters and a clash with a free name.
 const AUDIO = {
@@ -516,6 +518,9 @@ describe('POST /api/publish', () => {
     assert.deepEqual(data.clips.map((c) => c.title), ['Grunt', '(?????)']);
     assert.ok(!('import-folder' in data.clips[1]), 'the import folder stays in the inbox');
     assert.equal(data.clips[1].recording, '0602');
+    assert.equal(data.clips[1].wave, today(), 'a new clip gets today\'s wave');
+    assert.ok(!('wave' in data.clips[0]), 'a clip published before keeps no wave');
+    assert.deepEqual(data.dimensions.find((d) => d.key === 'wave'), { key: 'wave', label: 'Wave', defaultSort: true, order: [today()] });
     assert.deepEqual(readJson('inbox', 'clips.json').clips.map((c) => c.title), rest.map((c) => c.title));
 
     assert.equal(git('log', '-1', '--format=%s'), 'chore: publish 1 new clip, 1 removed clip');
@@ -548,6 +553,21 @@ describe('POST /api/publish', () => {
     assert.equal(git('log', '-1', '--format=%s'), 'chore: publish 1 new clip');
     assert.ok(git('show', '--name-only', '--format=', 'HEAD').split('\n').includes('src/clips/kept.mp3'), 'the audio is in the commit');
     assert.deepEqual(readJson('src', 'data', 'clips.json').clips.at(-1)['use-case'], ['Hurt', 'Victory'], 'several use cases stay a list');
+  });
+
+  test('a later wave goes first, and a renamed wave keeps its clips and its place', async () => {
+    // As if the last publish was on an earlier day, and the lead renamed that wave in the page.
+    const s = await state();
+    const renamed = s.published.clips.map((c) => (c.wave ? { ...c, wave: 'First batch' } : c));
+    const dims = s.published.dimensions.map((d) => (d.key === 'wave' ? { ...d, order: ['First batch'] } : d));
+    fs.writeFileSync(file('src', 'clips', 'later.mp3'), audio());
+    const later = { title: 'Later', audio: 'clips/later.mp3', 'source-game': 'A', 'use-case': 'Hurt', wave: 'typed by the page' };
+    const res = await send('POST', '/api/publish', { version: s.version, published: { dimensions: dims, clips: [...renamed, later] }, inbox: s.inbox });
+    assert.equal(res.status, 200, JSON.stringify(await res.json()));
+    const data = readJson('src', 'data', 'clips.json');
+    assert.deepEqual(data.dimensions.find((d) => d.key === 'wave').order, [today(), 'First batch']);
+    assert.equal(data.clips.at(-1).wave, today(), 'a new clip always gets the wave of the publish that adds it');
+    assert.deepEqual(data.clips.filter((c) => c.wave === 'First batch').map((c) => c.title), ['(?????)', 'Kept']);
   });
 
   test('says so when nothing changed', async () => {

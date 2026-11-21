@@ -31,6 +31,7 @@ const LIVE_BRANCH = 'main';                          // the branch GitHub Pages 
 const AUDIO_SUFFIXES = new Set(['.mp3', '.m4a', '.aac', '.ogg', '.oga', '.opus', '.wav', '.flac', '.webm']);
 const MAX_UPLOAD = 200 * 1024 * 1024;
 const IMPORT_FOLDER = 'import-folder';               // inbox-only field: the export folder a clip came from
+const WAVE = 'wave';                                 // the publish a clip came in with: its date, renamable in the page
 const NETWORK_TIMEOUT = 2 * 60 * 1000;              // longest a pull or push may take
 // git must never wait for a password in the terminal: the page would hang with no way to answer.
 const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' };
@@ -55,6 +56,22 @@ const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { retu
 // A name that only starts with two dots, such as ..intro.mp3, is still inside root.
 const within = (root, p) => { const rel = path.relative(root, p); return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)); };
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const pad = (n) => String(n).padStart(2, '0');
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+
+// Give every new clip today's wave, and put that wave first in the Wave dimension's order, so the
+// board and the gallery list the newest wave first. Clips published before keep their wave.
+function stampWave(dims, newClips) {
+  if (!newClips.length) return dims;
+  const wave = today();
+  for (const c of newClips) c[WAVE] = wave;
+  const out = dims.map((d) => ({ ...d }));
+  let dim = out.find((d) => d.key === WAVE);
+  if (!dim) out.push(dim = { key: WAVE, label: 'Wave', defaultSort: true });
+  const order = (Array.isArray(dim.order) ? dim.order : []).map(String).filter((v) => v !== wave);
+  dim.order = [wave, ...order];
+  return out;
+}
 
 function unquote(s) {
   try { return decodeURIComponent(s); } catch { throw new Refused(`not a valid URL path: ${JSON.stringify(s)}`); }
@@ -227,7 +244,9 @@ function publish(body) {
   // Every new clip's audio goes into the commit: moved in from the inbox, or already in src/clips (and
   // then committed with it, in case git does not track it yet). A new clip without audio is refused, so
   // the live page never lists a clip it cannot play. Clips published before are left as they are.
-  const before = new Set((readJson(DATA, { clips: [] }).clips || []).filter((c) => isLocal(c.audio)).map((c) => c.audio));
+  const oldClips = readJson(DATA, { clips: [] }).clips || [];
+  const before = new Set(oldClips.filter((c) => isLocal(c.audio)).map((c) => c.audio));
+  const listed = new Set(oldClips.map((c) => c.audio));
   const moves = [];
   const kept = []; // audio of new clips that is already in src/clips
   for (const c of clips) {
@@ -275,7 +294,8 @@ function publish(body) {
       moveFile(file, kept);
       done.trashed.push([kept, file]);
     }
-    const dims = (published.dimensions || []).filter((d) => d && typeof d === 'object' && d.key);
+    const declared = (published.dimensions || []).filter((d) => d && typeof d === 'object' && d.key);
+    const dims = stampWave(declared, clips.filter((c) => !listed.has(c.audio)));
     writeJson(DATA, { dimensions: dims, clips });
     writeJson(INBOX_DATA, { clips: inboxClips });
 
