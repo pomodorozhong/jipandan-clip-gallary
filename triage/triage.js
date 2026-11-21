@@ -523,7 +523,7 @@
   // docs/data-format.md. Tagging never moves the selection: N and the arrow keys do that.
   function setUses(update) {
     const clip = selected && clipOf(selected);
-    if (!clip) return;
+    if (!clip || isDropped(clip)) return; // a dropped clip's use cases are hidden, so keys must not change them
     const uses = update(usesOf(clip));
     if (!uses.length) delete clip[USE];
     else clip[USE] = uses.length === 1 ? uses[0] : uses;
