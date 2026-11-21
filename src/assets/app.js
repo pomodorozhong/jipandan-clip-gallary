@@ -206,6 +206,7 @@
     dot.className = 'dot';
     dot.style.background = bg;
     dot.style.fill = fg;
+    btn.style.setProperty('--fill', bg); // the playing chip fills with its own colour
     const label = document.createElement('span');
     label.className = 'label';
     label.textContent = clip.title;
@@ -229,6 +230,7 @@
     btn.setAttribute('aria-pressed', String(playing));
     btn.setAttribute('aria-label', (broken.has(id) ? 'Audio missing: ' : 'Play ') + clip.title);
     btn.querySelector('.dot').innerHTML = playing ? ICON_STOP : ICON_PLAY;
+    btn.style.setProperty('--progress', playing ? progressPercent() : '0%');
   }
 
   function repaintChips() {
@@ -291,14 +293,34 @@
       return;
     }
     playingId = clip.id;
+    // Load the new clip before repainting, so its fill starts at 0% rather than where the last one was.
+    if (clip.audio) player.src = new URL(clip.audio, location.href).href;
     repaintChips();
     if (!clip.audio) return markBroken(clip.id);
-    player.src = new URL(clip.audio, location.href).href;
     player.play().catch((err) => {
       if (err && err.name === 'AbortError') return; // another chip was clicked first
       markBroken(clip.id);
     });
   }
+
+  // How far the playing clip has got, as a CSS percentage. 0% until the length is known.
+  function progressPercent() {
+    const { currentTime, duration } = player;
+    if (!Number.isFinite(duration) || duration <= 0) return '0%';
+    return `${Math.min(100, (currentTime / duration) * 100).toFixed(2)}%`;
+  }
+
+  // While a clip plays, move the fill on its chip (every copy, when it sits in several columns) each
+  // frame; timeupdate alone fires only about four times a second, which looks jumpy on short clips.
+  let frame = 0;
+  function tick() {
+    frame = 0;
+    if (playingId === null || player.paused) return;
+    const value = progressPercent();
+    document.querySelectorAll(`.chip[data-id="${playingId}"]`).forEach((el) => el.style.setProperty('--progress', value));
+    frame = requestAnimationFrame(tick);
+  }
+  player.addEventListener('playing', () => { if (!frame) frame = requestAnimationFrame(tick); });
 
   function markBroken(id) {
     broken.add(id);
