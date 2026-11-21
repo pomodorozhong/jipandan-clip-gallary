@@ -364,6 +364,13 @@ describe('PUT /api/upload', () => {
     });
   }
 
+  test('stores a file whose name starts with two dots', async () => {
+    const dots = audio();
+    assert.equal((await upload('clips/..intro.mp3', dots)).status, 200);
+    assert.deepEqual(fs.readFileSync(file('inbox', 'clips', '..intro.mp3')), dots);
+    fs.rmSync(file('inbox', 'clips', '..intro.mp3'));
+  });
+
   test('says a file is too large, rather than dropping the connection', async () => {
     const res = await upload('clips/huge.mp3', Buffer.alloc(200 * 1024 * 1024 + 1));
     assert.equal(res.status, 413);

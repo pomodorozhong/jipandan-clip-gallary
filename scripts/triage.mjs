@@ -52,7 +52,8 @@ class Refused extends Error {
 
 const isFile = (p) => { try { return fs.statSync(p).isFile(); } catch { return false; } };
 const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
-const within = (root, p) => { const rel = path.relative(root, p); return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel)); };
+// A name that only starts with two dots, such as ..intro.mp3, is still inside root.
+const within = (root, p) => { const rel = path.relative(root, p); return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)); };
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function unquote(s) {
