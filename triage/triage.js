@@ -29,6 +29,7 @@
   let removed = new Set();  // published clips to drop (missing audio)
   let inbox = [];        // imported clips not published yet
   let selected = null;   // audio of the selected chip
+  let selectedCol = null; // column of the selected chip: a clip with several use cases has a chip in each
 
   // ---------- model ----------
 
@@ -164,8 +165,9 @@
       btn.classList.toggle('changed', isInbox(clip.audio) || edited(clipOf(clip.audio) || clip));
       if (server && server.missing.includes(clip.audio)) btn.classList.add('broken');
     },
-    onChipClick(clip) {
+    onChipClick(clip, btn) {
       selected = clip.audio;
+      selectedCol = btn.closest('.column')?.dataset.value ?? null;
       showSelected();
     },
     orderColumns(values, key) {
@@ -488,13 +490,26 @@
 
   // ---------- tagging ----------
 
+  // Every chip on the board in order, as { audio, col }. A clip with several use cases appears once per column.
   function chipsInOrder() {
-    return [...document.querySelectorAll('.chip')].map((el) => el.dataset.audio);
+    return [...document.querySelectorAll('.chip')].map((el) => ({ audio: el.dataset.audio, col: el.closest('.column').dataset.value }));
+  }
+
+  // Where the selected clip is in that order: its chip in the selected column, or else its first chip.
+  function selectedAt(order) {
+    const at = order.findIndex((c) => c.audio === selected && c.col === selectedCol);
+    return at >= 0 ? at : order.findIndex((c) => c.audio === selected);
+  }
+
+  function scrollToSelected() {
+    const chips = [...document.querySelectorAll('.chip.selected')];
+    const chip = chips.find((el) => el.closest('.column').dataset.value === selectedCol) || chips[0];
+    chip?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
   // The next clip without a use case, in board order after `from` (or from the start).
   function nextUntagged(from) {
-    const order = chipsInOrder();
+    const order = chipsInOrder().map((c) => c.audio);
     const at = order.indexOf(from);
     const rest = order.slice(at + 1).concat(order.slice(0, Math.max(at, 0)));
     return rest.find((a) => { const c = clipOf(a); return a !== from && c && !isDropped(c) && !has(c, USE); }) || null;
@@ -551,18 +566,19 @@
     const next = nextUntagged(selected);
     if (!next) { toast('Every clip has a use case.'); return; }
     selected = next;
+    selectedCol = null;
     showSelected();
-    document.querySelector('.chip.selected')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    scrollToSelected();
     play(next);
   }
 
   function step(delta) {
     const order = chipsInOrder();
     if (!order.length) return;
-    const at = order.indexOf(selected);
-    selected = order[(at < 0 ? 0 : at + delta + order.length) % order.length];
+    const at = selectedAt(order);
+    ({ audio: selected, col: selectedCol } = order[(at < 0 ? 0 : at + delta + order.length) % order.length]);
     showSelected();
-    document.querySelector('.chip.selected')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    scrollToSelected();
   }
 
   document.addEventListener('keydown', (e) => {

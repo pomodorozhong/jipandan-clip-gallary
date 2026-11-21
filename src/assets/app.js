@@ -211,7 +211,7 @@
     btn.title = dims.map((d) => d.label + ': ' + valuesOf(clip, d.key).join(', ')).join('\n');
     btn.addEventListener('click', () => {
       toggle(clip);
-      if (hooks.onChipClick) hooks.onChipClick(clip);
+      if (hooks.onChipClick) hooks.onChipClick(clip, btn);
     });
     paintChip(btn);
     if (hooks.decorateChip) hooks.decorateChip(btn, clip);
