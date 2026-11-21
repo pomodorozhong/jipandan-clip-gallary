@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Clip triage · Jipandan Voice Box</title>
+  <title data-i18n="triage.page.title">片段整理 · Jipandan 語音盒</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <!-- The viewer's own styles and board script, plus the triage additions. Served by scripts/triage.mjs. -->
@@ -11,8 +11,12 @@
   <link rel="stylesheet" href="/assets/style.css">
   <link rel="stylesheet" href="/triage/triage.css">
   <script type="module">
+    import * as i18n from '/assets/i18n.mjs';
+    import { MESSAGES } from '/triage/messages.mjs';
     import * as naming from '/triage/naming.mjs';
     import * as keys from '/triage/keys.mjs';
+    i18n.add(MESSAGES);
+    window.i18n = i18n;
     window.clipNaming = naming;
     window.clipKeys = keys;
   </script>
@@ -25,36 +29,36 @@
     <!-- Sidebar: the triage work, with Publish always in view at the bottom. -->
     <aside class="side">
       <div class="side-top">
-        <h1>Clip triage</h1>
-        <button class="btn small" id="open-import">+ Import</button>
+        <h1 data-i18n="triage.heading"></h1>
+        <div class="side-top-actions"><div id="lang-switch"></div><button class="btn small" id="open-import" data-i18n="triage.import"></button></div>
       </div>
 
       <div class="side-body">
         <section class="panel" id="panel-tag">
           <div class="progress" id="progress"></div>
           <div>
-            <h3 class="side-label">Selected clip</h3>
+            <h3 class="side-label" data-i18n="triage.selectedClip"></h3>
             <div id="now"></div>
           </div>
           <div id="use-block">
-            <h3 class="side-label">Use case <span class="side-label-note" id="use-total"></span> <button type="button" class="linkish rename-uses" id="rename-uses" hidden>Rename…</button></h3>
-            <p class="hint" id="rename-hint" hidden>Click the use case to rename. Esc cancels.</p>
-            <label class="find"><span aria-hidden="true">⌕</span><input id="use-filter" type="text" placeholder="Filter or create…" autocomplete="off" spellcheck="false"><kbd>/</kbd></label>
+            <h3 class="side-label"><span data-i18n="triage.useCase"></span> <span class="side-label-note" id="use-total"></span> <button type="button" class="linkish rename-uses" id="rename-uses" hidden></button></h3>
+            <p class="hint" id="rename-hint" data-i18n="triage.renameHint" hidden></p>
+            <label class="find"><span aria-hidden="true">⌕</span><input id="use-filter" type="text" data-i18n-attr="placeholder:triage.useFilter" autocomplete="off" spellcheck="false"><kbd>/</kbd></label>
             <div class="uses" id="uses"></div>
             <button type="button" class="more" id="more-uses" hidden></button>
-            <button type="button" class="btn quiet small" id="untag">Untag <kbd>0</kbd></button>
+            <button type="button" class="btn quiet small" id="untag"></button>
           </div>
-          <p class="keys"><kbd>Space</kbd> play or stop · <kbd>←</kbd> <kbd>→</kbd> previous or next clip · <kbd>1</kbd>–<kbd>9</kbd> add or remove a use case · <kbd>N</kbd> next untagged · <kbd>D</kbd> drop or restore · <kbd>Esc</kbd> deselect</p>
+          <p class="keys" data-i18n-html="triage.keys"></p>
         </section>
       </div>
 
       <div class="side-foot">
         <div class="foot-row">
           <span class="branch" id="branch"></span>
-          <a class="linkish" id="open-gallery" href="/gallery/" target="_blank" rel="noopener" title="The team's page with the clips published from this computer">Preview gallery ↗</a>
+          <a class="linkish" id="open-gallery" href="/gallery/" target="_blank" rel="noopener" data-i18n="triage.previewGallery" data-i18n-attr="title:triage.previewGalleryTitle"></a>
         </div>
         <button class="btn quiet small" id="remove-missing" hidden></button>
-        <button class="btn primary" id="publish" disabled>Nothing to publish</button>
+        <button class="btn primary" id="publish" disabled></button>
         <p class="foot-note" id="publish-note"></p>
       </div>
     </aside>
@@ -64,17 +68,17 @@
       <!-- Finding clips, on one card: search, filters and how many clips match. -->
       <header class="toolbar">
         <div class="findbar">
-          <label class="searchbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span class="visually-hidden">Search</span><input id="search" type="search" placeholder="Search titles, games, use cases…" autocomplete="off"></label>
-          <div class="filters" id="filters" aria-label="Filters"></div>
+          <label class="searchbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span class="visually-hidden" data-i18n="search.label"></span><input id="search" type="search" data-i18n-attr="placeholder:search.placeholder" autocomplete="off"></label>
+          <div class="filters" id="filters" data-i18n-attr="aria-label:filters.label"></div>
           <span class="total" id="total" aria-live="polite"></span>
         </div>
 
         <!-- How the board looks, quieter, under the card. -->
         <div class="viewbar">
-          <div class="view-settings" aria-label="View">
-            <label class="view-item"><span>Columns</span><span class="ghost"><select id="columns-by"></select></span></label>
-            <label class="view-item"><span>Colour</span><span class="ghost"><select id="colour-by"></select></span></label>
-            <label class="view-item"><span>Sort</span><span class="ghost"><select id="sort-by"></select></span></label>
+          <div class="view-settings" data-i18n-attr="aria-label:view.label">
+            <label class="view-item"><span data-i18n="view.columns"></span><span class="ghost"><select id="columns-by"></select></span></label>
+            <label class="view-item"><span data-i18n="view.colour"></span><span class="ghost"><select id="colour-by"></select></span></label>
+            <label class="view-item"><span data-i18n="view.sort"></span><span class="ghost"><select id="sort-by"></select></span></label>
           </div>
           <span class="view-rule" aria-hidden="true"></span>
           <div class="legend" id="legend"></div>
@@ -91,24 +95,24 @@
 
   <dialog class="sheet" id="import">
     <div class="sheet-inner">
-      <h2>Import clips</h2>
-      <p class="steps"><b>1 Pick files</b> · 2 Games</p>
+      <h2 data-i18n="import.title"></h2>
+      <p class="steps" data-i18n-html="import.steps1"></p>
       <div class="drop" id="drop">
-        <strong>Drop an export folder here</strong>
-        <span>Every audio file inside it is listed, including subfolders.</span>
-        <label class="btn primary">Choose folder…<input id="dir" type="file" webkitdirectory multiple hidden></label>
+        <strong data-i18n="import.drop"></strong>
+        <span data-i18n="import.dropHint"></span>
+        <label class="btn primary"><span data-i18n="import.choose"></span><input id="dir" type="file" webkitdirectory multiple hidden></label>
       </div>
       <div class="picked" id="picked" hidden>
         <strong id="picked-name"></strong>
-        <button type="button" class="linkish" id="pick-again">Change folder</button>
+        <button type="button" class="linkish" id="pick-again" data-i18n="import.change"></button>
       </div>
       <ul class="found" id="found" hidden></ul>
       <div class="sheet-actions">
         <span class="spacer" id="found-summary"></span>
-        <button class="btn quiet" id="select-new" hidden>Select all new</button>
-        <button class="btn quiet" id="select-none" hidden>Clear</button>
-        <button class="btn quiet" id="close-import">Cancel</button>
-        <button class="btn primary" id="do-import" disabled>Import selected</button>
+        <button class="btn quiet" id="select-new" data-i18n="import.selectNew" hidden></button>
+        <button class="btn quiet" id="select-none" data-i18n="import.clear" hidden></button>
+        <button class="btn quiet" id="close-import" data-i18n="import.cancel"></button>
+        <button class="btn primary" id="do-import" disabled data-i18n="import.selected"></button>
       </div>
     </div>
   </dialog>
@@ -116,28 +120,28 @@
   <!-- Second import step: one game per source folder, for the clips just imported. -->
   <dialog class="sheet" id="import-games">
     <div class="sheet-inner">
-      <h2>Pick a game for each folder</h2>
-      <p class="steps">1 Pick files · <b>2 Games</b></p>
+      <h2 data-i18n="games.title"></h2>
+      <p class="steps" data-i18n-html="import.steps2"></p>
       <p class="hint" id="games-intro"></p>
-      <label class="set-all">Set every folder to <select id="games-all"></select></label>
+      <label class="set-all"><span data-i18n="games.setAll"></span><select id="games-all"></select></label>
       <div class="games" id="games-list"></div>
       <div class="sheet-actions">
         <span class="spacer" id="games-left"></span>
-        <button class="btn quiet" id="games-skip">Skip for now</button>
-        <button class="btn primary" id="games-done">Done</button>
+        <button class="btn quiet" id="games-skip" data-i18n="games.skip"></button>
+        <button class="btn primary" id="games-done" data-i18n="games.done"></button>
       </div>
     </div>
   </dialog>
 
   <dialog class="sheet small" id="confirm-publish">
     <div class="sheet-inner">
-      <h2 id="publish-title">Publish to GitHub Pages?</h2>
+      <h2 id="publish-title"></h2>
       <ul class="plain" id="publish-list"></ul>
-      <p class="hint">This commits <code>src/data/clips.json</code> and <code>src/clips/</code> on <code id="publish-target">main</code> and pushes it.<span id="publish-after"></span> Untagged clips stay on this computer.</p>
+      <p class="hint" id="publish-what"></p>
       <div class="sheet-actions">
         <span class="spacer"></span>
-        <button class="btn quiet" id="cancel-publish">Cancel</button>
-        <button class="btn primary" id="do-publish">Publish</button>
+        <button class="btn quiet" id="cancel-publish" data-i18n="publish.cancel"></button>
+        <button class="btn primary" id="do-publish" data-i18n="publish.confirm"></button>
       </div>
     </div>
   </dialog>

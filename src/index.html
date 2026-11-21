@@ -1,14 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Jipandan Voice Box</title>
+  <title data-i18n="page.title">Jipandan 語音盒</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/filter-chips.css">
   <link rel="stylesheet" href="assets/style.css">
-  <script type="module">import * as FilterChips from './assets/filter-chips.mjs'; window.FilterChips = FilterChips;</script>
+  <!-- Interface text (zh-Hant, English fallback) and the filter bar, both before app.js runs. -->
+  <script type="module">
+    import * as i18n from './assets/i18n.mjs';
+    import * as FilterChips from './assets/filter-chips.mjs';
+    window.i18n = i18n;
+    window.FilterChips = FilterChips;
+  </script>
   <script src="assets/app.js" defer></script>
 </head>
 <body>
@@ -16,20 +22,21 @@
     <!-- Finding clips, on one card: search, filters and how many clips match. -->
     <header class="toolbar">
       <div class="findbar">
-        <label class="searchbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span class="visually-hidden">Search</span><input id="search" type="search" placeholder="Search titles, games, use cases…" autocomplete="off"><kbd aria-hidden="true">/</kbd></label>
-        <div class="filters" id="filters" aria-label="Filters"></div>
+        <label class="searchbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span class="visually-hidden" data-i18n="search.label"></span><input id="search" type="search" data-i18n-attr="placeholder:search.placeholder" autocomplete="off"><kbd aria-hidden="true">/</kbd></label>
+        <div class="filters" id="filters" data-i18n-attr="aria-label:filters.label"></div>
         <span class="total" id="total" aria-live="polite"></span>
       </div>
 
       <!-- How the board looks, quieter, under the card. -->
       <div class="viewbar">
-        <div class="view-settings" aria-label="View">
-          <label class="view-item"><span>Columns</span><span class="ghost"><select id="columns-by"></select></span></label>
-          <label class="view-item"><span>Colour</span><span class="ghost"><select id="colour-by"></select></span></label>
-          <label class="view-item"><span>Sort</span><span class="ghost"><select id="sort-by"></select></span></label>
+        <div class="view-settings" data-i18n-attr="aria-label:view.label">
+          <label class="view-item"><span data-i18n="view.columns"></span><span class="ghost"><select id="columns-by"></select></span></label>
+          <label class="view-item"><span data-i18n="view.colour"></span><span class="ghost"><select id="colour-by"></select></span></label>
+          <label class="view-item"><span data-i18n="view.sort"></span><span class="ghost"><select id="sort-by"></select></span></label>
         </div>
         <span class="view-rule" aria-hidden="true"></span>
         <div class="legend" id="legend"></div>
+        <div id="lang-switch"></div>
       </div>
     </header>
 
@@ -40,17 +47,17 @@
     </main>
 
     <!-- The selected clip: its unique name, and ways to keep or share it. Filled in by assets/app.js. -->
-    <section class="clipbar" id="clipbar" aria-label="Selected clip" hidden>
+    <section class="clipbar" id="clipbar" data-i18n-attr="aria-label:clipbar.label" hidden>
       <div class="clipbar-text">
-        <div class="clipbar-title" id="clipbar-title"></div>
+        <div class="clipbar-title" id="clipbar-title" lang="zh-Hant"></div>
         <div class="clipbar-meta" id="clipbar-meta"></div>
       </div>
-      <code class="clipbar-name" id="clipbar-name" title="The clip's unique name: its file name, never shared by two clips"></code>
+      <code class="clipbar-name" id="clipbar-name" data-i18n-attr="title:clipbar.nameTitle"></code>
       <div class="clipbar-actions">
-        <button type="button" id="clipbar-star" aria-pressed="false" title="Starred clips are kept in this browser only">☆ Star</button>
-        <button type="button" id="clipbar-copy">Copy name</button>
-        <button type="button" id="clipbar-link">Copy link</button>
-        <button type="button" class="clipbar-close" id="clipbar-close" aria-label="Close">✕</button>
+        <button type="button" id="clipbar-star" aria-pressed="false" data-i18n-attr="title:clipbar.starTitle"></button>
+        <button type="button" id="clipbar-copy" data-i18n="clipbar.copyName"></button>
+        <button type="button" id="clipbar-link" data-i18n="clipbar.copyLink"></button>
+        <button type="button" class="clipbar-close" id="clipbar-close" data-i18n-attr="aria-label:clipbar.close">✕</button>
       </div>
     </section>
   </div>

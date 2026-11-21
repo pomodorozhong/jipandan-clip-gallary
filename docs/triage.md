@@ -14,6 +14,8 @@ The triage page opens in your browser at http://127.0.0.1:8770. Press Ctrl+C in 
 
 It needs Node.js 20 or later (the same Node the project's npm scripts use) and git. The server uses no packages, so there is nothing to install beyond those.
 
+The page is in Traditional Chinese, like the gallery; **中文 | EN** next to **+ 匯入** at the top of the sidebar switches it to English and back, without reloading, so unpublished work and the selected clip stay put. The browser remembers the pick. Messages that come straight from git or from the server's checks (why a publish was refused, for example) stay in English.
+
 ## Importing
 
 1. Click **+ Import** at the top of the sidebar, then **Choose folder…** or drop an export folder onto the box.

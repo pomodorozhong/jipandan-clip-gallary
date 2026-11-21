@@ -37,8 +37,13 @@
   const ICON_STOP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"/></svg>';
 
   const $ = (id) => document.getElementById(id);
+  // Interface text: src/assets/i18n.mjs, loaded by the page before this script. Data values are never translated.
+  const I = window.i18n;
+  const t = I.t;
+  const show = (v) => (v === NONE ? t('value.none') : v); // a value as displayed; "(none)" in the page's language
+  const fieldText = (d, clip) => d.label + t('sep.colon') + valuesOf(clip, d.key).map(show).join(t('sep.list'));
 
-  let dims = [];   // [{ key, label, order? }]
+  let dims = [];   // [{ key, label, name, order? }]: `name` from clips.json, `label` as shown (see relabel)
   let clips = [];  // [{ id, title, audio, ...dimension fields }]
   let state = { cols: '', colour: '', sort: 'title', q: '', filters: {} }; // filters: { key: { not, values } }
   const FC = window.FilterChips; // src/assets/filter-chips.mjs, loaded by the page before this script
@@ -98,7 +103,7 @@
         if (ok(v) || (Array.isArray(v) && v.every(ok))) keys.push(k);
       }
     }
-    return keys.map((key) => ({ key, label: humanise(key) }));
+    return keys.map((key) => ({ key, name: humanise(key) }));
   }
 
   function dimByKey(key) {
@@ -151,9 +156,9 @@
 
   function sortOptions() {
     return [
-      { value: 'title', label: 'Title A–Z' },
-      { value: 'title-desc', label: 'Title Z–A' },
-      { value: 'file', label: 'File order' },
+      { value: 'title', label: t('sort.title') },
+      { value: 'title-desc', label: t('sort.titleDesc') },
+      { value: 'file', label: t('sort.file') },
       ...dims.map((d) => ({ value: 'dim:' + d.key, label: d.label })),
     ];
   }
@@ -186,7 +191,7 @@
   function buildControls() {
     const dimOptions = dims.map((d) => ({ value: d.key, label: d.label }));
     fillSelect($('columns-by'), dimOptions, state.cols);
-    fillSelect($('colour-by'), dimOptions.concat({ value: 'none', label: 'Nothing' }), state.colour);
+    fillSelect($('colour-by'), dimOptions.concat({ value: 'none', label: t('view.nothing') }), state.colour);
     fillSelect($('sort-by'), sortOptions(), state.sort);
     $('search').value = state.q;
 
@@ -194,8 +199,13 @@
     if (filterBar) { filterBar.set(state.filters); return; }
     filterBar = FC.createFilterChips($('filters'), {
       fields: dims.map((d) => ({ key: d.key, label: d.label }))
-        .concat(GALLERY ? [{ key: STARRED, label: '★ Starred', flag: 'yes' }] : []),
+        .concat(GALLERY ? [{ key: STARRED, label: t('filter.starred'), flag: 'yes' }] : []),
       values: (key) => valueList(dimByKey(key), clips),
+      display: (key, value) => show(value),
+      text: {
+        add: t('filter.add'), clear: t('filter.clear'), remove: t('filter.remove'), is: t('filter.is'), isNot: t('filter.isNot'),
+        empty: t('filter.empty'), done: t('filter.done'), colon: t('sep.colon'), list: t('sep.list'),
+      },
       count: (key, value) => {
         const others = FC.filterRows(FC.without(state.filters, key), valuesFor);
         return clips.filter((c) => others(c) && searchMatches(c) && valuesFor(c, key).includes(value)).length;
@@ -208,7 +218,7 @@
   // ---------- rendering ----------
 
   // Search matches the title, any dimension value (game, use case, batch…) or the clip's file name.
-  // Returns null for no match, or where it matched: { title: true } or { field: 'Source game' }.
+  // Returns null for no match, or where it matched: { title: true } or { field: 'Source game' } (in the page's language).
   function searchHit(clip) {
     const q = state.q.toLowerCase();
     if (!q) return {};
@@ -216,7 +226,7 @@
     for (const d of dims) {
       if (valuesOf(clip, d.key).some((v) => v !== NONE && v.toLowerCase().includes(q))) return { field: d.label };
     }
-    if (clipName(clip).toLowerCase().includes(q)) return { field: 'file name' };
+    if (clipName(clip).toLowerCase().includes(q)) return { field: t('search.fileName') };
     return null;
   }
 
@@ -264,6 +274,7 @@
     btn.style.setProperty('--fill', bg); // the playing chip fills with its own colour
     const label = document.createElement('span');
     label.className = 'label';
+    label.lang = 'zh-Hant'; // titles are the team's Chinese, so Chinese fonts and line breaks even on the English page
     const hit = searchHit(clip) || {};
     const at = hit.title ? clip.title.toLowerCase().indexOf(state.q.toLowerCase()) : -1;
     if (at >= 0) {
@@ -285,11 +296,11 @@
     if (GALLERY && stars.has(clipName(clip))) {
       const star = document.createElement('span');
       star.className = 'star';
-      star.setAttribute('aria-label', 'starred');
+      star.setAttribute('aria-label', t('chip.starred'));
       star.textContent = '★';
       btn.append(star);
     }
-    btn.title = dims.map((d) => d.label + ': ' + valuesOf(clip, d.key).join(', ')).join('\n') + (GALLERY ? '\n' + clipName(clip) : '');
+    btn.title = dims.map((d) => fieldText(d, clip)).join('\n') + (GALLERY ? '\n' + clipName(clip) : '');
     btn.addEventListener('click', () => {
       toggle(clip);
       if (GALLERY) select(clip.id);
@@ -307,7 +318,7 @@
     btn.classList.toggle('playing', playing);
     btn.classList.toggle('broken', broken.has(id));
     btn.setAttribute('aria-pressed', String(playing));
-    btn.setAttribute('aria-label', (broken.has(id) ? 'Audio missing: ' : 'Play ') + clip.title);
+    btn.setAttribute('aria-label', t(broken.has(id) ? 'chip.missing' : 'chip.play', { title: clip.title }));
     btn.querySelector('.dot').innerHTML = playing ? ICON_STOP : ICON_PLAY;
     btn.style.setProperty('--progress', playing ? progressPercent() : '0%');
     if (GALLERY) btn.classList.toggle('selected', id === selectedId);
@@ -325,16 +336,19 @@
       const span = document.createElement('span');
       const swatch = document.createElement('i');
       swatch.style.background = bg;
-      span.append(swatch, value);
+      span.append(swatch, show(value));
       return span;
     }));
     const shown = document.createElement('b');
     shown.textContent = visible.length;
-    $('total').replaceChildren(shown, visible.length === clips.length ? ' clips' : ` of ${clips.length} clips`);
+    const total = visible.length === clips.length
+      ? I.parts('total.all', { n: visible.length })
+      : I.parts('total.some', { n: visible.length, all: clips.length });
+    $('total').replaceChildren(...total.map((x) => (x === visible.length ? shown : String(x))));
 
     const message = $('message');
     message.hidden = visible.length > 0;
-    message.textContent = clips.length ? 'No clips match these filters.' : 'There are no clips in data/clips.json yet.';
+    message.textContent = t(clips.length ? 'board.noMatch' : 'board.noClips');
 
     const colsDim = dimByKey(state.cols);
     const sort = sorter();
@@ -348,7 +362,7 @@
       const h2 = document.createElement('h2');
       const count = document.createElement('small');
       count.textContent = items.length;
-      h2.append(value + ' ', count);
+      h2.append(show(value) + ' ', count);
       const chips = document.createElement('div');
       chips.className = 'chips';
       chips.append(...items.map((c) => chipFor(c, colours)));
@@ -379,11 +393,11 @@
     bar.hidden = !clip;
     if (!clip) return;
     $('clipbar-title').textContent = clip.title;
-    $('clipbar-meta').textContent = dims.map((d) => d.label + ': ' + valuesOf(clip, d.key).join(', ')).join(' · ');
+    $('clipbar-meta').textContent = dims.map((d) => fieldText(d, clip)).join(' · ');
     $('clipbar-name').textContent = clipName(clip);
     const starred = stars.has(clipName(clip));
     const star = $('clipbar-star');
-    star.textContent = starred ? '★ Starred' : '☆ Star';
+    star.textContent = t(starred ? 'clipbar.starred' : 'clipbar.star');
     star.setAttribute('aria-pressed', String(starred));
   }
 
@@ -409,25 +423,25 @@
     toastTimer = setTimeout(() => { el.hidden = true; }, 1800);
   }
 
-  async function copy(text, what) {
+  async function copy(text, done) {
     try {
       await navigator.clipboard.writeText(text);
-      toast(what + ' copied');
+      toast(t(done));
     } catch {
       // No clipboard access (an http page, or permission refused): select the name so it can be copied by hand.
       const range = document.createRange();
       range.selectNodeContents($('clipbar-name'));
       getSelection().removeAllRanges();
       getSelection().addRange(range);
-      toast('Press ⌘C or Ctrl+C to copy');
+      toast(t('copy.byHand'));
     }
   }
 
   function wireClipBar() {
     if (!$('clipbar')) return;
     $('clipbar-star').addEventListener('click', toggleStar);
-    $('clipbar-copy').addEventListener('click', () => copy(clipName(clips[selectedId]), 'Name'));
-    $('clipbar-link').addEventListener('click', () => copy(clipLink(clips[selectedId]), 'Link'));
+    $('clipbar-copy').addEventListener('click', () => copy(clipName(clips[selectedId]), 'copied.name'));
+    $('clipbar-link').addEventListener('click', () => copy(clipLink(clips[selectedId]), 'copied.link'));
     $('clipbar-close').addEventListener('click', () => select(null));
   }
 
@@ -437,7 +451,7 @@
     if (!GALLERY || !linkedName) return;
     const clip = clips.find((c) => clipName(c) === linkedName);
     linkedName = '';
-    if (!clip) return toast('That clip is no longer in the gallery');
+    if (!clip) return toast(t('link.gone'));
     select(clip.id);
     const chip = document.querySelector(`.chip[data-id="${clip.id}"]`);
     if (chip) chip.scrollIntoView({ block: 'center', inline: 'center' });
@@ -515,6 +529,21 @@
     $('search').addEventListener('input', (e) => { state.q = e.target.value.trim(); update(); filterBar.refresh(); });
     window.addEventListener('hashchange', () => { readHash(); buildControls(); render(); openLinkedClip(); });
     wireClipBar();
+    if ($('lang-switch')) I.mountSwitch($('lang-switch'));
+    // A new language redraws in place: the view, the selection and playback stay. The filter bar is built
+    // again with the new words (an open menu closes).
+    document.addEventListener('langchange', () => {
+      relabel();
+      if (filterBar) { filterBar.destroy(); filterBar = null; }
+      buildControls();
+      update();
+      if (hooks.onLangChange) hooks.onLangChange();
+    });
+  }
+
+  // Shown labels: a built-in dimension's name in the page's language, or the label from clips.json.
+  function relabel() {
+    dims.forEach((d) => { d.label = I.dimLabel(d.key, d.name); });
   }
 
   // "Wave" was renamed "Batch": a list published before still has a `wave` field and dimension. Show
@@ -541,8 +570,9 @@
       .map((c, id) => ({ ...c, id }));
     const declared = Array.isArray(data.dimensions) ? data.dimensions : null;
     dims = declared
-      ? declared.filter((d) => d && d.key).map((d) => ({ key: d.key, label: d.label || humanise(d.key), order: d.order, defaultSort: d.defaultSort === true }))
+      ? declared.filter((d) => d && d.key).map((d) => ({ key: d.key, name: d.label || humanise(d.key), order: d.order, defaultSort: d.defaultSort === true }))
       : inferDims(clips);
+    relabel();
   }
 
   // For the triage page: swap in edited data and redraw, keeping the current view and playback.
@@ -566,6 +596,7 @@
   };
 
   async function start() {
+    I.apply();
     try {
       let data;
       if (hooks.load) {
@@ -579,7 +610,7 @@
     } catch (err) {
       const message = $('message');
       message.hidden = false;
-      message.textContent = `Could not load ${DATA_URL} (${err.message}). If you opened this file directly, serve the folder over HTTP instead.`;
+      message.textContent = t('board.loadFailed', { url: DATA_URL, error: err.message });
       return;
     }
     readHash();
