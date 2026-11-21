@@ -36,7 +36,9 @@
 
   let dims = [];   // [{ key, label, order? }]
   let clips = [];  // [{ id, title, audio, ...dimension fields }]
-  let state = { cols: '', colour: '', sort: 'title', q: '', filters: {} };
+  let state = { cols: '', colour: '', sort: 'title', q: '', filters: {} }; // filters: { key: { not, values } }
+  const FC = window.FilterChips; // src/assets/filter-chips.mjs, loaded by the page before this script
+  let filterBar = null;
 
   const player = new Audio();
   let playingId = null;
@@ -92,10 +94,7 @@
     const p = new URLSearchParams(location.hash.slice(1));
     const keys = dims.map((d) => d.key);
     const pick = (v, fallback, allowed) => (allowed.includes(v) ? v : fallback);
-    const filters = {};
-    for (const [k, v] of p) {
-      if (k.startsWith('f.') && keys.includes(k.slice(2)) && v) filters[k.slice(2)] = v;
-    }
+    const filters = FC.fromParams(p, keys); // f.<key>=value, repeated; nf.<key> for "is not"
     // A dimension marked `defaultSort` (such as the wave, newest first) sorts the board until the viewer picks another order.
     const sortDim = dims.find((d) => d.defaultSort);
     state = {
@@ -113,7 +112,7 @@
     p.set('colour', state.colour);
     p.set('sort', state.sort);
     if (state.q) p.set('q', state.q);
-    for (const [k, v] of Object.entries(state.filters)) if (v) p.set('f.' + k, v);
+    FC.toParams(state.filters, p);
     history.replaceState(null, '', '#' + p.toString());
   }
 
@@ -145,32 +144,28 @@
     fillSelect($('sort-by'), sortOptions(), state.sort);
     $('search').value = state.q;
 
-    const filters = $('filters');
-    filters.replaceChildren(...dims.map((d) => {
-      const label = document.createElement('label');
-      label.className = 'pill' + (state.filters[d.key] ? ' active' : '');
-      label.append(d.label + ' ');
-      const select = document.createElement('select');
-      fillSelect(select, [{ value: '', label: 'All' }].concat(valueList(d, clips).map((v) => ({ value: v, label: v }))), state.filters[d.key] || '');
-      select.addEventListener('change', () => {
-        if (select.value) state.filters[d.key] = select.value;
-        else delete state.filters[d.key];
-        label.classList.toggle('active', Boolean(select.value));
-        update();
-      });
-      label.append(select);
-      return label;
-    }));
+    // The "+ Filter" bar is built once and then only told about new filters, so an open menu survives redraws.
+    if (filterBar) { filterBar.set(state.filters); return; }
+    filterBar = FC.createFilterChips($('filters'), {
+      fields: dims.map((d) => ({ key: d.key, label: d.label })),
+      values: (key) => valueList(dimByKey(key), clips),
+      count: (key, value) => {
+        const others = FC.filterRows(FC.without(state.filters, key), valuesOf);
+        return clips.filter((c) => others(c) && searchMatches(c) && valuesOf(c, key).includes(value)).length;
+      },
+      filters: state.filters,
+      onChange: (filters) => { state.filters = filters; update(); },
+    });
   }
 
   // ---------- rendering ----------
 
+  function searchMatches(clip) {
+    return !state.q || clip.title.toLowerCase().includes(state.q.toLowerCase());
+  }
+
   function matches(clip) {
-    for (const [k, v] of Object.entries(state.filters)) {
-      if (!valuesOf(clip, k).includes(v)) return false;
-    }
-    if (state.q && !clip.title.toLowerCase().includes(state.q.toLowerCase())) return false;
-    return true;
+    return FC.filterRows(state.filters, valuesOf)(clip) && searchMatches(clip);
   }
 
   function sorter() {
@@ -339,7 +334,7 @@
     $('columns-by').addEventListener('change', (e) => { state.cols = e.target.value; update(); });
     $('colour-by').addEventListener('change', (e) => { state.colour = e.target.value; update(); });
     $('sort-by').addEventListener('change', (e) => { state.sort = e.target.value; update(); });
-    $('search').addEventListener('input', (e) => { state.q = e.target.value.trim(); update(); });
+    $('search').addEventListener('input', (e) => { state.q = e.target.value.trim(); update(); filterBar.refresh(); });
     window.addEventListener('hashchange', () => { readHash(); buildControls(); render(); });
   }
 

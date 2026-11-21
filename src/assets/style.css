@@ -55,14 +55,8 @@ body {
 .pill input { width: 160px; }
 
 /* Filters */
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.filters .pill { min-height: 40px; font-size: 13px; }
-.filters .pill select { height: 30px; }
-.filters .pill.active { outline: 2px solid var(--link); }
+/* The "+ Filter" bar itself is styled by filter-chips.css. */
+.filters { min-height: 34px; }
 
 /* Legend */
 .legend-row {
