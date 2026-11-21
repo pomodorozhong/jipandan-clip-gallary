@@ -96,10 +96,12 @@
     for (const [k, v] of p) {
       if (k.startsWith('f.') && keys.includes(k.slice(2)) && v) filters[k.slice(2)] = v;
     }
+    // A dimension marked `defaultSort` (such as the wave, newest first) sorts the board until the viewer picks another order.
+    const sortDim = dims.find((d) => d.defaultSort);
     state = {
       cols: pick(p.get('cols'), keys[0], keys),
       colour: pick(p.get('colour'), keys[1] || keys[0] || 'none', keys.concat('none')),
-      sort: pick(p.get('sort'), 'title', sortOptions().map((o) => o.value)),
+      sort: pick(p.get('sort'), sortDim ? 'dim:' + sortDim.key : 'title', sortOptions().map((o) => o.value)),
       q: p.get('q') || '',
       filters,
     };
@@ -326,7 +328,7 @@
       .map((c, id) => ({ ...c, id }));
     const declared = Array.isArray(data.dimensions) ? data.dimensions : null;
     dims = declared
-      ? declared.filter((d) => d && d.key).map((d) => ({ key: d.key, label: d.label || humanise(d.key), order: d.order }))
+      ? declared.filter((d) => d && d.key).map((d) => ({ key: d.key, label: d.label || humanise(d.key), order: d.order, defaultSort: d.defaultSort === true }))
       : inferDims(clips);
   }
 
