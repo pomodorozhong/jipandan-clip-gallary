@@ -10,6 +10,10 @@
   'use strict';
 
   const hooks = window.clipBoardHooks || {};
+  // The published gallery (no hooks) also has stars, a selected clip and the clip bar; the triage page has its own.
+  const GALLERY = !window.clipBoardHooks;
+  const STARRED = 'starred';                  // the "★ Starred" filter's key, in links as f.starred=yes
+  const STARS_STORE = 'jipandan-gallery:stars'; // starred clips' names, in this browser only
   const DATA_URL = 'data/clips.json';
   const RESERVED = new Set(['title', 'audio']);
   const NONE = '(none)';
@@ -39,6 +43,17 @@
   let state = { cols: '', colour: '', sort: 'title', q: '', filters: {} }; // filters: { key: { not, values } }
   const FC = window.FilterChips; // src/assets/filter-chips.mjs, loaded by the page before this script
   let filterBar = null;
+  let selectedId = null;   // the gallery's selected clip, shown in the clip bar
+  let linkedName = '';     // a clip named in the page address (#clip=<name>), selected once the board is drawn
+
+  // Stars live in this browser's storage only, so each teammate keeps their own. Storage can be blocked
+  // (private windows, some previews): then stars still work until the page is closed.
+  const stars = (() => {
+    try { return new Set(JSON.parse(localStorage.getItem(STARS_STORE) || '[]')); } catch { return new Set(); }
+  })();
+  function saveStars() {
+    try { localStorage.setItem(STARS_STORE, JSON.stringify([...stars])); } catch { /* not saved; kept for this visit */ }
+  }
 
   const player = new Audio();
   let playingId = null;
@@ -57,6 +72,21 @@
     const list = Array.isArray(v) ? v : (v === undefined || v === null ? [] : [v]);
     const clean = list.map((x) => String(x).trim()).filter(Boolean);
     return clean.length ? clean : [NONE];
+  }
+
+  // A clip's unique name: its audio file name without the extension, such as "0511_2204_(倒吸一口氣)".
+  // The triage page never gives two clips the same file name, so this tells clips with the same title apart.
+  function clipName(clip) {
+    const file = String(clip.audio || '').split('/').pop();
+    let name;
+    try { name = decodeURIComponent(file); } catch { name = file; }
+    return name.replace(/\.[^.]+$/, '') || clip.title;
+  }
+
+  // Values for filtering: a dimension's values, or for the "★ Starred" filter, whether the clip is starred.
+  function valuesFor(clip, key) {
+    if (key === STARRED) return [stars.has(clipName(clip)) ? 'yes' : 'no'];
+    return valuesOf(clip, key);
   }
 
   function inferDims(list) {
@@ -94,8 +124,9 @@
     const p = new URLSearchParams(location.hash.slice(1));
     const keys = dims.map((d) => d.key);
     const pick = (v, fallback, allowed) => (allowed.includes(v) ? v : fallback);
-    const filters = FC.fromParams(p, keys); // f.<key>=value, repeated; nf.<key> for "is not"
-    // A dimension marked `defaultSort` (such as the wave, newest first) sorts the board until the viewer picks another order.
+    const filters = FC.fromParams(p, GALLERY ? keys.concat(STARRED) : keys); // f.<key>=value, repeated; nf.<key> for "is not"
+    if (p.get('clip')) linkedName = p.get('clip');
+    // A dimension marked `defaultSort` (such as the batch, newest first) sorts the board until the viewer picks another order.
     const sortDim = dims.find((d) => d.defaultSort);
     state = {
       cols: pick(p.get('cols'), keys[0], keys),
@@ -147,11 +178,12 @@
     // The "+ Filter" bar is built once and then only told about new filters, so an open menu survives redraws.
     if (filterBar) { filterBar.set(state.filters); return; }
     filterBar = FC.createFilterChips($('filters'), {
-      fields: dims.map((d) => ({ key: d.key, label: d.label })),
+      fields: dims.map((d) => ({ key: d.key, label: d.label }))
+        .concat(GALLERY ? [{ key: STARRED, label: '★ Starred', flag: 'yes' }] : []),
       values: (key) => valueList(dimByKey(key), clips),
       count: (key, value) => {
-        const others = FC.filterRows(FC.without(state.filters, key), valuesOf);
-        return clips.filter((c) => others(c) && searchMatches(c) && valuesOf(c, key).includes(value)).length;
+        const others = FC.filterRows(FC.without(state.filters, key), valuesFor);
+        return clips.filter((c) => others(c) && searchMatches(c) && valuesFor(c, key).includes(value)).length;
       },
       filters: state.filters,
       onChange: (filters) => { state.filters = filters; update(); },
@@ -160,12 +192,25 @@
 
   // ---------- rendering ----------
 
+  // Search matches the title, any dimension value (game, use case, batch…) or the clip's file name.
+  // Returns null for no match, or where it matched: { title: true } or { field: 'Source game' }.
+  function searchHit(clip) {
+    const q = state.q.toLowerCase();
+    if (!q) return {};
+    if (clip.title.toLowerCase().includes(q)) return { title: true };
+    for (const d of dims) {
+      if (valuesOf(clip, d.key).some((v) => v !== NONE && v.toLowerCase().includes(q))) return { field: d.label };
+    }
+    if (clipName(clip).toLowerCase().includes(q)) return { field: 'file name' };
+    return null;
+  }
+
   function searchMatches(clip) {
-    return !state.q || clip.title.toLowerCase().includes(state.q.toLowerCase());
+    return searchHit(clip) !== null;
   }
 
   function matches(clip) {
-    return FC.filterRows(state.filters, valuesOf)(clip) && searchMatches(clip);
+    return FC.filterRows(state.filters, valuesFor)(clip) && searchMatches(clip);
   }
 
   function sorter() {
@@ -204,11 +249,35 @@
     btn.style.setProperty('--fill', bg); // the playing chip fills with its own colour
     const label = document.createElement('span');
     label.className = 'label';
-    label.textContent = clip.title;
+    const hit = searchHit(clip) || {};
+    const at = hit.title ? clip.title.toLowerCase().indexOf(state.q.toLowerCase()) : -1;
+    if (at >= 0) {
+      // Mark the searched text in the title.
+      const mark = document.createElement('mark');
+      mark.textContent = clip.title.slice(at, at + state.q.length);
+      label.append(clip.title.slice(0, at), mark, clip.title.slice(at + state.q.length));
+    } else {
+      label.textContent = clip.title;
+    }
     btn.append(dot, label);
-    btn.title = dims.map((d) => d.label + ': ' + valuesOf(clip, d.key).join(', ')).join('\n');
+    if (hit.field) {
+      // Found through another field: say which, so the match makes sense.
+      const why = document.createElement('span');
+      why.className = 'why';
+      why.textContent = '· ' + hit.field.toLowerCase();
+      btn.append(why);
+    }
+    if (GALLERY && stars.has(clipName(clip))) {
+      const star = document.createElement('span');
+      star.className = 'star';
+      star.setAttribute('aria-label', 'starred');
+      star.textContent = '★';
+      btn.append(star);
+    }
+    btn.title = dims.map((d) => d.label + ': ' + valuesOf(clip, d.key).join(', ')).join('\n') + (GALLERY ? '\n' + clipName(clip) : '');
     btn.addEventListener('click', () => {
       toggle(clip);
+      if (GALLERY) select(clip.id);
       if (hooks.onChipClick) hooks.onChipClick(clip, btn);
     });
     paintChip(btn);
@@ -226,6 +295,7 @@
     btn.setAttribute('aria-label', (broken.has(id) ? 'Audio missing: ' : 'Play ') + clip.title);
     btn.querySelector('.dot').innerHTML = playing ? ICON_STOP : ICON_PLAY;
     btn.style.setProperty('--progress', playing ? progressPercent() : '0%');
+    if (GALLERY) btn.classList.toggle('selected', id === selectedId);
   }
 
   function repaintChips() {
@@ -276,6 +346,86 @@
   function update() {
     writeHash();
     render();
+    renderClipBar();
+  }
+
+  // ---------- the clip bar (gallery only): the selected clip's name, Star, Copy name, Copy link ----------
+
+  function select(id) {
+    selectedId = id;
+    repaintChips();
+    renderClipBar();
+  }
+
+  function renderClipBar() {
+    const bar = $('clipbar');
+    if (!bar) return;
+    const clip = selectedId === null ? null : clips[selectedId];
+    bar.hidden = !clip;
+    if (!clip) return;
+    $('clipbar-title').textContent = clip.title;
+    $('clipbar-meta').textContent = dims.map((d) => d.label + ': ' + valuesOf(clip, d.key).join(', ')).join(' · ');
+    $('clipbar-name').textContent = clipName(clip);
+    const starred = stars.has(clipName(clip));
+    const star = $('clipbar-star');
+    star.textContent = starred ? '★ Starred' : '☆ Star';
+    star.setAttribute('aria-pressed', String(starred));
+  }
+
+  function toggleStar() {
+    const name = clipName(clips[selectedId]);
+    if (stars.has(name)) stars.delete(name); else stars.add(name);
+    saveStars();
+    update(); // the star mark, the "★ Starred" filter and its counts all change
+    filterBar.refresh();
+  }
+
+  // A link that opens the gallery with this clip selected. It carries only the clip, not the current view.
+  function clipLink(clip) {
+    return location.href.split('#')[0] + '#clip=' + encodeURIComponent(clipName(clip));
+  }
+
+  let toastTimer = 0;
+  function toast(text) {
+    const el = $('toast');
+    el.textContent = text;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 1800);
+  }
+
+  async function copy(text, what) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(what + ' copied');
+    } catch {
+      // No clipboard access (an http page, or permission refused): select the name so it can be copied by hand.
+      const range = document.createRange();
+      range.selectNodeContents($('clipbar-name'));
+      getSelection().removeAllRanges();
+      getSelection().addRange(range);
+      toast('Press ⌘C or Ctrl+C to copy');
+    }
+  }
+
+  function wireClipBar() {
+    if (!$('clipbar')) return;
+    $('clipbar-star').addEventListener('click', toggleStar);
+    $('clipbar-copy').addEventListener('click', () => copy(clipName(clips[selectedId]), 'Name'));
+    $('clipbar-link').addEventListener('click', () => copy(clipLink(clips[selectedId]), 'Link'));
+    $('clipbar-close').addEventListener('click', () => select(null));
+  }
+
+  // A clip named in the address (#clip=<name>): select it and bring it into view. Browsers don't let a
+  // page play sound before a click, so it waits for one.
+  function openLinkedClip() {
+    if (!GALLERY || !linkedName) return;
+    const clip = clips.find((c) => clipName(c) === linkedName);
+    linkedName = '';
+    if (!clip) return toast('That clip is no longer in the gallery');
+    select(clip.id);
+    const chip = document.querySelector(`.chip[data-id="${clip.id}"]`);
+    if (chip) chip.scrollIntoView({ block: 'center', inline: 'center' });
   }
 
   // ---------- playback ----------
@@ -335,10 +485,28 @@
     $('colour-by').addEventListener('change', (e) => { state.colour = e.target.value; update(); });
     $('sort-by').addEventListener('change', (e) => { state.sort = e.target.value; update(); });
     $('search').addEventListener('input', (e) => { state.q = e.target.value.trim(); update(); filterBar.refresh(); });
-    window.addEventListener('hashchange', () => { readHash(); buildControls(); render(); });
+    window.addEventListener('hashchange', () => { readHash(); buildControls(); render(); openLinkedClip(); });
+    wireClipBar();
+  }
+
+  // "Wave" was renamed "Batch": a list published before still has a `wave` field and dimension. Show
+  // them as Batch, so the page reads the same whichever version published the list.
+  function batchFromWave(data) {
+    const declared = Array.isArray(data.dimensions) ? data.dimensions : [];
+    if (declared.some((d) => d && d.key === 'batch') || !declared.some((d) => d && d.key === 'wave')) return data;
+    return {
+      ...data,
+      dimensions: declared.map((d) => (d && d.key === 'wave' ? { ...d, key: 'batch', label: !d.label || d.label === 'Wave' ? 'Batch' : d.label } : d)),
+      clips: (data.clips || []).map((c) => {
+        if (!c || !('wave' in c)) return c;
+        const { wave, ...rest } = c;
+        return { ...rest, batch: wave };
+      }),
+    };
   }
 
   function setData(data) {
+    if (!Array.isArray(data)) data = batchFromWave(data);
     const list = Array.isArray(data) ? data : (data.clips || []);
     clips = list
       .filter((c) => c && typeof c.title === 'string' && c.title.trim())
@@ -390,6 +558,7 @@
     buildControls();
     wireControls();
     update();
+    openLinkedClip();
   }
 
   start();

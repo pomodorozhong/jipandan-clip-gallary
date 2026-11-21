@@ -4,6 +4,8 @@
 .fc-bar {
   --fc-accent: var(--link, #3b3fb8);       /* "is" chips, links, focus */
   --fc-not: #b8401c;                       /* "is not" chips */
+  --fc-flag: #ffd24a;                      /* on/off chips, such as "★ Starred" */
+  --fc-flag-ink: #3a2f00;
   --fc-surface: var(--surface, #ffffff);   /* menus */
   --fc-soft: var(--bg, #eef0ff);           /* hover rows, the is / is not switch */
   --fc-ink: var(--ink, #1d1f3a);
@@ -43,6 +45,9 @@
   overflow: hidden;
 }
 .fc-chip.fc-not { background: var(--fc-not); }
+.fc-chip.fc-flag { background: var(--fc-flag); color: var(--fc-flag-ink); }
+.fc-chip.fc-flag .fc-open { cursor: default; }
+.fc-chip.fc-flag .fc-remove { background: rgba(0, 0, 0, .08); }
 .fc-open {
   min-width: 0;
   padding: 0 6px 0 14px;

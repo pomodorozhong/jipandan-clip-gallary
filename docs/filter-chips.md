@@ -9,6 +9,7 @@ The viewer's filters are a small, self-contained component, so the same "+ Filte
 - An **is / is not** switch at the top of the checklist chooses between keeping and hiding the ticked values.
 - Each active filter is one chip: blue for "is" (`Use case: Victory, 失敗`, or `Victory, 失敗 +2` for more), red for "is not" (`Source game is not REPO`). Click the chip to change it; click its ✕ to remove it.
 - A field opened and left with nothing ticked disappears when its menu closes. **Clear all** appears once two or more filters are active.
+- A field can also be an on/off filter, such as **★ Starred**: picking it from **+ Filter** adds its chip straight away, with no checklist.
 - A row passes a field when it has any of the ticked values ("is"), or none of them ("is not"). Fields combine with AND.
 - Esc or a click outside closes a menu and puts focus back on its chip. Ticking a box updates the chip in place, so keyboard focus stays where it was.
 
@@ -46,7 +47,7 @@ Copy both files, load the stylesheet, and import the module:
 
 | Option | Meaning |
 | --- | --- |
-| `fields` | `[{ key, label }]`: the fields offered under **+ Filter**, in that order. |
+| `fields` | `[{ key, label, flag? }]`: the fields offered under **+ Filter**, in that order. A field with `flag` is an on/off filter such as "★ Starred": picking it keeps rows whose value for that field is `flag`, its chip shows only the label, and ✕ turns it off. |
 | `values(key)` | The field's values, in the order the checklist lists them. |
 | `count(key, value)` | Optional. How many rows ticking that value would show. For counts that follow the other filters, filter with `filterRows(without(filters, key), valuesOf)` first. |
 | `filters` | Optional starting filters. |
@@ -70,6 +71,7 @@ Every colour is a CSS custom property on `.fc-bar`, with a fallback, so the bar 
 | --- | --- |
 | `--fc-accent` | "is" chips, the dashed chip, links, focus rings |
 | `--fc-not` | "is not" chips |
+| `--fc-flag`, `--fc-flag-ink` | On/off chips such as "★ Starred" |
 | `--fc-surface` | Menus |
 | `--fc-soft` | Hovered rows and the is / is not switch |
 | `--fc-ink`, `--fc-muted` | Text |

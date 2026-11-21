@@ -518,9 +518,9 @@ describe('POST /api/publish', () => {
     assert.deepEqual(data.clips.map((c) => c.title), ['Grunt', '(?????)']);
     assert.ok(!('import-folder' in data.clips[1]), 'the import folder stays in the inbox');
     assert.equal(data.clips[1].recording, '0602');
-    assert.equal(data.clips[1].wave, today(), 'a new clip gets today\'s wave');
-    assert.ok(!('wave' in data.clips[0]), 'a clip published before keeps no wave');
-    assert.deepEqual(data.dimensions.find((d) => d.key === 'wave'), { key: 'wave', label: 'Wave', defaultSort: true, order: [today()] });
+    assert.equal(data.clips[1].batch, today(), 'a new clip gets today\'s batch');
+    assert.ok(!('batch' in data.clips[0]), 'a clip published before keeps no batch');
+    assert.deepEqual(data.dimensions.find((d) => d.key === 'batch'), { key: 'batch', label: 'Batch', defaultSort: true, order: [today()] });
     assert.deepEqual(readJson('inbox', 'clips.json').clips.map((c) => c.title), rest.map((c) => c.title));
 
     assert.equal(git('log', '-1', '--format=%s'), 'chore: publish 1 new clip, 1 removed clip');
@@ -555,19 +555,44 @@ describe('POST /api/publish', () => {
     assert.deepEqual(readJson('src', 'data', 'clips.json').clips.at(-1)['use-case'], ['Hurt', 'Victory'], 'several use cases stay a list');
   });
 
-  test('a later wave goes first, and a renamed wave keeps its clips and its place', async () => {
-    // As if the last publish was on an earlier day, and the lead renamed that wave in the page.
+  test('a later batch goes first, and a renamed batch keeps its clips and its place', async () => {
+    // As if the last publish was on an earlier day, and the lead renamed that batch in the page.
     const s = await state();
-    const renamed = s.published.clips.map((c) => (c.wave ? { ...c, wave: 'First batch' } : c));
-    const dims = s.published.dimensions.map((d) => (d.key === 'wave' ? { ...d, order: ['First batch'] } : d));
+    const renamed = s.published.clips.map((c) => (c.batch ? { ...c, batch: 'First batch' } : c));
+    const dims = s.published.dimensions.map((d) => (d.key === 'batch' ? { ...d, order: ['First batch'] } : d));
     fs.writeFileSync(file('src', 'clips', 'later.mp3'), audio());
-    const later = { title: 'Later', audio: 'clips/later.mp3', 'source-game': 'A', 'use-case': 'Hurt', wave: 'typed by the page' };
+    const later = { title: 'Later', audio: 'clips/later.mp3', 'source-game': 'A', 'use-case': 'Hurt', batch: 'typed by the page' };
     const res = await send('POST', '/api/publish', { version: s.version, published: { dimensions: dims, clips: [...renamed, later] }, inbox: s.inbox });
     assert.equal(res.status, 200, JSON.stringify(await res.json()));
     const data = readJson('src', 'data', 'clips.json');
-    assert.deepEqual(data.dimensions.find((d) => d.key === 'wave').order, [today(), 'First batch']);
-    assert.equal(data.clips.at(-1).wave, today(), 'a new clip always gets the wave of the publish that adds it');
-    assert.deepEqual(data.clips.filter((c) => c.wave === 'First batch').map((c) => c.title), ['(?????)', 'Kept']);
+    assert.deepEqual(data.dimensions.find((d) => d.key === 'batch').order, [today(), 'First batch']);
+    assert.equal(data.clips.at(-1).batch, today(), 'a new clip always gets the batch of the publish that adds it');
+    assert.deepEqual(data.clips.filter((c) => c.batch === 'First batch').map((c) => c.title), ['(?????)', 'Kept']);
+  });
+
+  test('a list published with waves is read as batches, and the next publish writes batches', async () => {
+    // As if the list was published before "wave" was renamed "batch".
+    const data = readJson('src', 'data', 'clips.json');
+    const old = {
+      dimensions: data.dimensions.map((d) => (d.key === 'batch' ? { ...d, key: 'wave', label: 'Wave' } : d)),
+      clips: data.clips.map(({ batch, ...c }) => (batch ? { ...c, wave: batch } : c)),
+    };
+    writeJson('src/data/clips.json', old);
+    git('commit', '-q', '-am', 'test: a list with waves');
+    const s = await state();
+    assert.ok(!s.published.dimensions.some((d) => d.key === 'wave'), 'no Wave dimension in the page');
+    assert.deepEqual(s.published.dimensions.find((d) => d.key === 'batch'), { key: 'batch', label: 'Batch', defaultSort: true, order: [today(), 'First batch'] });
+    assert.ok(s.published.clips.every((c) => !('wave' in c)));
+    assert.equal(s.published.clips.filter((c) => c.batch === 'First batch').length, 2);
+    // A page that still sends waves gets batches written too.
+    fs.writeFileSync(file('src', 'clips', 'after.mp3'), audio());
+    const after = { title: 'After', audio: 'clips/after.mp3', 'source-game': 'A', 'use-case': 'Hurt' };
+    const res = await send('POST', '/api/publish', { version: s.version, published: { dimensions: old.dimensions, clips: [...old.clips, after] }, inbox: s.inbox });
+    assert.equal(res.status, 200, JSON.stringify(await res.json()));
+    const written = readJson('src', 'data', 'clips.json');
+    assert.ok(!JSON.stringify(written).includes('"wave"'), 'nothing is called wave any more');
+    assert.deepEqual(written.dimensions.find((d) => d.key === 'batch').order, [today(), 'First batch']);
+    assert.equal(written.clips.at(-1).batch, today());
   });
 
   test('says so when nothing changed', async () => {

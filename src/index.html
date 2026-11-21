@@ -17,7 +17,7 @@
       <label class="pill">Columns <select id="columns-by"></select></label>
       <label class="pill">Colour by <select id="colour-by"></select></label>
       <label class="pill">Sort <select id="sort-by"></select></label>
-      <label class="pill search">Search <input id="search" type="search" placeholder="clip title"></label>
+      <label class="pill search">Search <input id="search" type="search" placeholder="title, game, use case…"></label>
     </header>
 
     <div class="filters" id="filters" aria-label="Filters"></div>
@@ -32,6 +32,22 @@
     <main class="board-scroll">
       <div class="board" id="board"></div>
     </main>
+
+    <!-- The selected clip: its unique name, and ways to keep or share it. Filled in by assets/app.js. -->
+    <section class="clipbar" id="clipbar" aria-label="Selected clip" hidden>
+      <div class="clipbar-text">
+        <div class="clipbar-title" id="clipbar-title"></div>
+        <div class="clipbar-meta" id="clipbar-meta"></div>
+      </div>
+      <code class="clipbar-name" id="clipbar-name" title="The clip's unique name: its file name, never shared by two clips"></code>
+      <div class="clipbar-actions">
+        <button type="button" id="clipbar-star" aria-pressed="false" title="Starred clips are kept in this browser only">☆ Star</button>
+        <button type="button" id="clipbar-copy">Copy name</button>
+        <button type="button" id="clipbar-link">Copy link</button>
+        <button type="button" class="clipbar-close" id="clipbar-close" aria-label="Close">✕</button>
+      </div>
+    </section>
   </div>
+  <div class="toast" id="toast" role="status" hidden></div>
 </body>
 </html>
