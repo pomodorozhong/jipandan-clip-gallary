@@ -131,6 +131,15 @@ function gitError(result) {
   return (result.stderr || result.stdout || String(result.error || '')).trim();
 }
 
+// True when the remote branch this branch pulls from was deleted (git ls-remote finds no such ref).
+function upstreamGone(branch) {
+  const remote = git(['config', `branch.${branch}.remote`], { check: false });
+  const merge = git(['config', `branch.${branch}.merge`], { check: false });
+  if (!remote || !merge) return false;
+  const result = spawnSync('git', ['ls-remote', '--exit-code', remote, merge], { cwd: REPO, env: GIT_ENV, encoding: 'utf8', timeout: NETWORK_TIMEOUT });
+  return result.status === 2;
+}
+
 // GitHub link for opening a pull request from branch into main, or "" if origin is not on GitHub.
 function compareUrl(branch) {
   const url = git(['remote', 'get-url', 'origin'], { check: false });
@@ -192,7 +201,16 @@ function publish(body) {
   }
 
   // Bring the branch up to date first, so the push is a fast-forward. A branch never pushed has nothing to pull.
-  if (git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'], { check: false })) git(['pull', '--ff-only', '--quiet'], { timeout: NETWORK_TIMEOUT });
+  if (git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'], { check: false })) {
+    try {
+      git(['pull', '--ff-only', '--quiet'], { timeout: NETWORK_TIMEOUT });
+    } catch (err) {
+      if (err instanceof Refused && upstreamGone(branch)) {
+        throw new Refused(`${branch} no longer exists on GitHub, probably because its pull request was merged. Switch to ${LIVE_BRANCH} (git switch ${LIVE_BRANCH} && git pull), reload this page, and publish from there.`, 409);
+      }
+      throw err;
+    }
+  }
   if (body.version !== digest(DATA)) throw new Refused('GitHub had newer clips. Reload the page to see them, then publish again.', 409);
 
   const published = body.published || {};

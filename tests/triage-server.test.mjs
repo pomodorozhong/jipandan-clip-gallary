@@ -551,6 +551,20 @@ describe('POST /api/publish', () => {
     assert.equal(result.message, 'Nothing changed, so nothing was published.');
   });
 
+  test('says so plainly when the branch was deleted on GitHub', async () => {
+    const s = await state();
+    const head = git('rev-parse', 'HEAD');
+    execFileSync('git', ['branch', '-D', BRANCH], { cwd: remote });
+    try {
+      const res = await send('POST', '/api/publish', { version: s.version, published: s.published, inbox: s.inbox });
+      assert.equal(res.status, 409);
+      assert.match((await res.json()).error, new RegExp(`${BRANCH} no longer exists on GitHub`));
+      assert.equal(git('rev-parse', 'HEAD'), head, 'no commit');
+    } finally {
+      git('push', '--quiet', 'origin', BRANCH);
+    }
+  });
+
   test('refuses when clips.json has uncommitted changes', async () => {
     const s = await state();
     fs.appendFileSync(file('src', 'data', 'clips.json'), ' ');
