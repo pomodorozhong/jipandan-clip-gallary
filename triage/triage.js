@@ -539,8 +539,9 @@
     const filter = $('use-filter');
     filter.oninput = renderTagPanel;
     filter.onkeydown = (e) => {
-      if (e.key === 'Escape') { filter.value = ''; filter.blur(); renderTagPanel(); e.preventDefault(); return; }
-      if (e.key !== 'Enter') return;
+      const key = window.clipKeys.filterKey(e); // triage/keys.mjs: ignores keys an IME is using
+      if (key === 'escape') { filter.value = ''; filter.blur(); renderTagPanel(); e.preventDefault(); return; }
+      if (key !== 'enter') return;
       e.preventDefault();
       const raw = filter.value.trim();
       if (!raw) return;
@@ -644,21 +645,22 @@
     scrollToSelected();
   }
 
+  // Shortcuts match physical keys (triage/keys.mjs), so they keep working with an Asian IME selected.
   document.addEventListener('keydown', (e) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.target.closest && e.target.closest('input, select, textarea, dialog')) return;
     if (document.querySelector('dialog[open]')) return;
+    const act = window.clipKeys.shortcut(e);
+    if (!act) return;
     const cases = keyedUses();
-    if (/^[1-9]$/.test(e.key) && cases[e.key - 1]) toggleUse(cases[e.key - 1]);
-    else if (e.key === '0') clearUses();
-    else if (e.key === 'n' || e.key === 'N') goNext();
-    else if ((e.key === 'd' || e.key === 'D') && selected) toggleDrop();
-    else if (e.key === '/' && selected) $('use-filter').focus();
-    else if (e.key === 'Escape' && renamingUse) { renamingUse = false; renderTagPanel(); }
-    else if (e.key === 'Escape' && selected) { selected = null; showSelected(); }
-    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') step(1);
-    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') step(-1);
-    else if (e.key === ' ' && selected) board().toggle(selected);
+    if (act.type === 'use' && cases[act.slot]) toggleUse(cases[act.slot]);
+    else if (act.type === 'clear') clearUses();
+    else if (act.type === 'next-untagged') goNext();
+    else if (act.type === 'drop' && selected) toggleDrop();
+    else if (act.type === 'filter' && selected) $('use-filter').focus();
+    else if (act.type === 'escape' && renamingUse) { renamingUse = false; renderTagPanel(); }
+    else if (act.type === 'escape' && selected) { selected = null; showSelected(); }
+    else if (act.type === 'step') step(act.delta);
+    else if (act.type === 'play' && selected) board().toggle(selected);
     else return;
     e.preventDefault();
   });
