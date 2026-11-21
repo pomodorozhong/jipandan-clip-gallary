@@ -52,7 +52,10 @@ Copy both files, load the stylesheet, and import the module:
 | `count(key, value)` | Optional. How many rows ticking that value would show. For counts that follow the other filters, filter with `filterRows(without(filters, key), valuesOf)` first. |
 | `filters` | Optional starting filters. |
 | `onChange(filters)` | Called after every change, with a fresh copy of the filters. |
-| `text` | Optional labels: `add`, `clear`, `remove`, `is`, `isNot`, `empty`, `done`. |
+| `display(key, value)` | Optional. The text shown for a value, in chips and checklists, such as `（無）` for the gallery's `(none)`. The filter itself keeps the value. |
+| `text` | Optional words, for a page in another language: `add`, `clear`, `remove`, `is`, `isNot`, `empty`, `done`, plus `colon` (after the field, `": "`) and `list` (between values, `", "`). English by default (`DEFAULT_TEXT`). The gallery passes its zh-Hant or English words from [src/assets/i18n.mjs](../src/assets/i18n.mjs). |
+
+The component has no English of its own beyond those defaults. To change language, `destroy()` the bar and create it again with the new `text` and labels, as the gallery does.
 
 It returns `{ get(), set(filters), refresh(), close(), destroy() }`. Call `refresh()` when the rows or anything else that affects `count` changes (the viewer calls it when the search text changes), and `set()` to replace the filters from outside, for example when the page address changes.
 
@@ -61,7 +64,7 @@ Filters are plain objects, `{ [key]: { not: boolean, values: string[] } }`. The 
 - `filterRows(filters, valuesOf)` returns a predicate for rows.
 - `without(filters, key)` returns the filters minus one field.
 - `toParams(filters, params?)` and `fromParams(params, keys?)` store filters in `URLSearchParams`: one `f.<key>=<value>` per value, `nf.<key>` for "is not". Values may contain any character.
-- `chipText(label, filter)` returns the chip's text as `[field part, values part]`.
+- `chipText(label, filter, text?, display?)` returns the chip's text as `[field part, values part]`, using `text`'s `isNot`, `colon` and `list` and the `display` function for values.
 
 ## Styling
 
