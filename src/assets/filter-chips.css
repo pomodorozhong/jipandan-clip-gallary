@@ -4,6 +4,7 @@
 .fc-bar {
   --fc-accent: var(--link, #3b3fb8);       /* "is" chips, links, focus */
   --fc-not: #b8401c;                       /* "is not" chips */
+  --fc-height: 34px;                       /* every chip, and the "+ Filter" chip */
   --fc-flag: #ffd24a;                      /* on/off chips, such as "★ Starred" */
   --fc-flag-ink: #3a2f00;
   --fc-surface: var(--surface, #ffffff);   /* menus */
@@ -24,8 +25,8 @@
 
 /* The dashed "+ Filter" chip */
 .fc-add {
-  height: 34px;
-  padding: 0 14px;
+  height: var(--fc-height);
+  padding: 0 16px;
   border: 1.5px dashed var(--fc-dash);
   border-radius: 999px;
   background: transparent;
@@ -37,7 +38,7 @@
 .fc-chip {
   display: inline-flex;
   align-items: stretch;
-  height: 34px;
+  height: var(--fc-height);
   max-width: min(360px, 100%);
   border-radius: 999px;
   background: var(--fc-accent);

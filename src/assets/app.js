@@ -151,11 +151,10 @@
 
   function sortOptions() {
     return [
-      // Read after "sorted by" in the view bar.
-      { value: 'title', label: 'title A–Z' },
-      { value: 'title-desc', label: 'title Z–A' },
-      { value: 'file', label: 'file order' },
-      ...dims.map((d) => ({ value: 'dim:' + d.key, label: d.label.toLowerCase() })),
+      { value: 'title', label: 'Title A–Z' },
+      { value: 'title-desc', label: 'Title Z–A' },
+      { value: 'file', label: 'File order' },
+      ...dims.map((d) => ({ value: 'dim:' + d.key, label: d.label })),
     ];
   }
 
@@ -167,12 +166,27 @@
       return opt;
     }));
     select.value = value;
+    fitSelect(select);
+  }
+
+  // The view line's dropdowns read as text: each is as wide as its chosen value, plus room for the chevron.
+  const measure = document.createElement('canvas').getContext('2d');
+  function fitViewSelects() {
+    ['columns-by', 'colour-by', 'sort-by'].forEach((id) => fitSelect($(id)));
+  }
+
+  function fitSelect(select) {
+    const option = select.options[select.selectedIndex];
+    if (!option || !select.closest('.ghost')) return;
+    measure.font = getComputedStyle(select).font;
+    const pad = parseFloat(getComputedStyle(select).paddingLeft) + 24;
+    select.style.width = Math.ceil(measure.measureText(option.text).width + pad) + 'px';
   }
 
   function buildControls() {
     const dimOptions = dims.map((d) => ({ value: d.key, label: d.label }));
     fillSelect($('columns-by'), dimOptions, state.cols);
-    fillSelect($('colour-by'), dimOptions.concat({ value: 'none', label: 'nothing' }), state.colour);
+    fillSelect($('colour-by'), dimOptions.concat({ value: 'none', label: 'Nothing' }), state.colour);
     fillSelect($('sort-by'), sortOptions(), state.sort);
     $('search').value = state.q;
 
@@ -314,9 +328,9 @@
       span.append(swatch, value);
       return span;
     }));
-    $('total').textContent = visible.length === clips.length
-      ? `${clips.length} clips`
-      : `${visible.length} of ${clips.length} clips`;
+    const shown = document.createElement('b');
+    shown.textContent = visible.length;
+    $('total').replaceChildren(shown, visible.length === clips.length ? ' clips' : ` of ${clips.length} clips`);
 
     const message = $('message');
     message.hidden = visible.length > 0;
@@ -482,9 +496,22 @@
   // ---------- start ----------
 
   function wireControls() {
-    $('columns-by').addEventListener('change', (e) => { state.cols = e.target.value; update(); });
-    $('colour-by').addEventListener('change', (e) => { state.colour = e.target.value; update(); });
-    $('sort-by').addEventListener('change', (e) => { state.sort = e.target.value; update(); });
+    $('columns-by').addEventListener('change', (e) => { state.cols = e.target.value; fitSelect(e.target); update(); });
+    $('colour-by').addEventListener('change', (e) => { state.colour = e.target.value; fitSelect(e.target); update(); });
+    $('sort-by').addEventListener('change', (e) => { state.sort = e.target.value; fitSelect(e.target); update(); });
+    // Fonts load after the first draw, and the phone layout changes the padding: size the dropdowns again.
+    if (document.fonts) document.fonts.ready.then(fitViewSelects);
+    matchMedia('(max-width: 720px)').addEventListener('change', fitViewSelects);
+    // In the gallery, "/" jumps to search (the triage page uses it for its use case filter).
+    if (GALLERY) {
+      document.addEventListener('keydown', (e) => {
+        // The physical key, so it works with an Asian input method switched on too.
+        if (e.code !== 'Slash' || e.shiftKey || e.isComposing || e.keyCode === 229 || e.metaKey || e.ctrlKey || e.altKey) return;
+        if (e.target.closest && e.target.closest('input, select, textarea, [contenteditable]')) return;
+        e.preventDefault();
+        $('search').focus();
+      });
+    }
     $('search').addEventListener('input', (e) => { state.q = e.target.value.trim(); update(); filterBar.refresh(); });
     window.addEventListener('hashchange', () => { readHash(); buildControls(); render(); openLinkedClip(); });
     wireClipBar();

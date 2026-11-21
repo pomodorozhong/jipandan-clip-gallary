@@ -70,6 +70,7 @@ Every colour is a CSS custom property on `.fc-bar`, with a fallback, so the bar 
 | Property | Used for |
 | --- | --- |
 | `--fc-accent` | "is" chips, the dashed chip, links, focus rings |
+| `--fc-height` | The height of every chip and the dashed chip (34px by default; the gallery uses 40px to match its search box) |
 | `--fc-not` | "is not" chips |
 | `--fc-flag`, `--fc-flag-ink` | On/off chips such as "★ Starred" |
 | `--fc-surface` | Menus |

@@ -61,24 +61,25 @@
 
     <!-- The viewer's board (src/assets/app.js fills these in). -->
     <div class="main">
-      <!-- Finding clips first; how the board looks sits underneath, quieter. -->
+      <!-- Finding clips, on one card: search, filters and how many clips match. -->
       <header class="toolbar">
-        <label class="searchbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span class="visually-hidden">Search</span><input id="search" type="search" placeholder="Search titles, games, use cases…" autocomplete="off"></label>
-        <div class="filters" id="filters" aria-label="Filters"></div>
-      </header>
-
-      <div class="viewbar">
-        <div class="view-settings" aria-label="View">
-          <label>Columns by <select id="columns-by"></select></label>
-          <span class="view-dot" aria-hidden="true"></span>
-          <label>coloured by <select id="colour-by"></select></label>
-          <span class="view-dot" aria-hidden="true"></span>
-          <label>sorted by <select id="sort-by"></select></label>
+        <div class="findbar">
+          <label class="searchbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span class="visually-hidden">Search</span><input id="search" type="search" placeholder="Search titles, games, use cases…" autocomplete="off"></label>
+          <div class="filters" id="filters" aria-label="Filters"></div>
+          <span class="total" id="total" aria-live="polite"></span>
         </div>
-        <span class="view-sep" aria-hidden="true"></span>
-        <div class="legend" id="legend"></div>
-        <span class="total" id="total" aria-live="polite"></span>
-      </div>
+
+        <!-- How the board looks, quieter, under the card. -->
+        <div class="viewbar">
+          <div class="view-settings" aria-label="View">
+            <label class="view-item"><span>Columns</span><span class="ghost"><select id="columns-by"></select></span></label>
+            <label class="view-item"><span>Colour</span><span class="ghost"><select id="colour-by"></select></span></label>
+            <label class="view-item"><span>Sort</span><span class="ghost"><select id="sort-by"></select></span></label>
+          </div>
+          <span class="view-rule" aria-hidden="true"></span>
+          <div class="legend" id="legend"></div>
+        </div>
+      </header>
 
       <p class="message" id="message" hidden></p>
 
